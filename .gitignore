@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Environnement virtuel
+.venv/
+venv/
+
+# Secrets
+.env
+.env.*
+
+# Base de données locale (offres scrapées)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Logs
+*.log
+
+# Éditeurs / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
