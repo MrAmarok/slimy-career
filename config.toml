@@ -1,0 +1,237 @@
+# Fichier modifiable à la main ou depuis l'interface (onglet Paramètres).
+
+# Villes / régions où chercher : chaque recherche est lancée dans chaque zone ("Paris", "Lyon", "Occitanie", "France"…).
+# Les offres gardent la zone qui les a trouvées (filtre "Zone de recherche" du kanban).
+locations = [
+  "Bordeaux",
+  "Île-de-France",
+]
+country = "France"              # pays des recherches (Indeed) et pays par défaut des offres
+radius_km = 30                # rayon autour d'une ville (LinkedIn et Indeed)
+
+results_per_search = 25          # par site, par recherche et par zone
+max_age_days = 30                # ignore les offres plus vieilles (quand le site donne la date)
+parallel_searches = 6           # recherches lancées en même temps
+per_site = 2                    # recherches simultanées max sur un même site (trop haut = blocage 429)
+
+# Recherches complètes, envoyées telles quelles à tous les sites (servent aussi de tag sur les offres trouvées).
+searches = [
+  "stage devops",
+  "stage développeur full stack",
+  "stage cybersécurité",
+]
+
+# Recherches "larges" : chaque tag et chaque compétence devient une petite recherche séparée,
+# précédée du type de contrat (ex : "stage devops", "stage python"). Une offre n'a pas besoin de tout cocher :
+# il suffit qu'elle corresponde à une de ces recherches. Un tag qui est un nom de catégorie ("DevOps / Cloud")
+# est découpé sur les "/" ("stage DevOps", "stage Cloud").
+contract = "stage"
+search_tags = []
+search_skills = []
+
+# Sites activés : linkedin, hellowork, indeed, google
+sites = [
+  "linkedin",
+  "hellowork",
+  "indeed",
+  "google",
+]
+
+# Google Jobs n'est accessible que via SerpAPI (100 recherches/mois gratuites : https://serpapi.com)
+# Mets ta clé ici ou dans la variable d'environnement SERPAPI_KEY. Sans clé, Google est ignoré.
+serpapi_key = ""
+
+# Compétences détectées automatiquement dans les descriptions
+skills = [
+  "Python",
+  "Java",
+  "JavaScript",
+  "TypeScript",
+  "C",
+  "C++",
+  "C#",
+  "Go",
+  "Rust",
+  "PHP",
+  "Ruby",
+  "Kotlin",
+  "Swift",
+  "Scala",
+  "R",
+  "SQL",
+  "PostgreSQL",
+  "MySQL",
+  "MongoDB",
+  "Redis",
+  "Elasticsearch",
+  "React",
+  "Angular",
+  "Vue",
+  "Node.js",
+  "Next.js",
+  "Django",
+  "Flask",
+  "FastAPI",
+  "Spring",
+  "Symfony",
+  "Laravel",
+  ".NET",
+  "Docker",
+  "Kubernetes",
+  "Terraform",
+  "Ansible",
+  "Jenkins",
+  "GitLab CI",
+  "GitHub Actions",
+  "CI/CD",
+  "AWS",
+  "Azure",
+  "GCP",
+  "Linux",
+  "Bash",
+  "Git",
+  "Spark",
+  "Kafka",
+  "Airflow",
+  "dbt",
+  "Pandas",
+  "TensorFlow",
+  "PyTorch",
+  "Scikit-learn",
+  "Machine Learning",
+  "Deep Learning",
+  "LLM",
+  "NLP",
+  "Power BI",
+  "Tableau",
+  "Excel",
+  "Agile",
+  "Scrum",
+  "API REST",
+  "GraphQL",
+  "Microservices",
+]
+
+# Catégories automatiques : une offre y entre si son titre contient un des mots-clés,
+# ou si sa description en contient au moins 3 différents.
+[categories]
+"Cybersécurité" = [
+  "cybersécurité",
+  "cyber-sécurité",
+  "cybersecurity",
+  "cyber",
+  "CyberSOC",
+  "cyberdéfense",
+  "DevSecOps",
+  "sécurité informatique",
+  "sécurité des systèmes d'information",
+  "RSSI",
+  "SOC",
+  "SIEM",
+  "pentest",
+  "test d'intrusion",
+  "GRC",
+  "ISO 27001",
+  "forensic",
+  "vulnérabilité",
+  "cryptographie",
+  "IAM",
+  "EDR",
+]
+"DevOps / Cloud" = [
+  "DevOps",
+  "DevSecOps",
+  "SRE",
+  "cloud",
+  "Kubernetes",
+  "Docker",
+  "Terraform",
+  "Ansible",
+  "CI/CD",
+  "AWS",
+  "Azure",
+  "GCP",
+  "infrastructure as code",
+  "MLOps",
+  "GitOps",
+]
+"Data / IA" = [
+  "data science",
+  "datascience",
+  "analyse de données",
+  "machine learning",
+  "deep learning",
+  "IA",
+  "intelligence artificielle",
+  "IA générative",
+  "LLM",
+  "data scientist",
+  "data engineer",
+  "data analyst",
+  "BI",
+  "NLP",
+  "computer vision",
+  "big data",
+]
+"Développement web" = [
+  "web",
+  "full stack",
+  "fullstack",
+  "full-stack",
+  "frontend",
+  "front-end",
+  "backend",
+  "back-end",
+  "React",
+  "Angular",
+  "Vue.js",
+  "Node.js",
+  "Django",
+  "Symfony",
+  "Laravel",
+]
+"Développement logiciel" = [
+  "développement logiciel",
+  "développeur logiciel",
+  "ingénieur logiciel",
+  "logiciel",
+  "software",
+  "Python",
+  "Java",
+  "C++",
+  "C#",
+  ".NET",
+  "Rust",
+  "Go",
+]
+"Mobile" = [
+  "mobile",
+  "Android",
+  "iOS",
+  "Flutter",
+  "React Native",
+  "Kotlin",
+  "SwiftUI",
+]
+"Embarqué" = [
+  "embarqué",
+  "embedded",
+  "firmware",
+  "temps réel",
+  "microcontrôleur",
+  "FPGA",
+  "RTOS",
+  "électronique",
+]
+"Réseaux / Systèmes" = [
+  "réseau",
+  "réseaux",
+  "network",
+  "administrateur système",
+  "sysadmin",
+  "Cisco",
+  "Windows Server",
+  "Active Directory",
+  "supervision",
+  "infrastructure",
+]
