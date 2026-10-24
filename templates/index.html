@@ -1,0 +1,1296 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Candidatures</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<style>
+  :root {
+    --bg: #ffffff; --soft: #f6f7f9; --hover: #eef0f3; --line: #e5e7eb; --line-strong: #d1d5db;
+    --text: #111827; --muted: #6b7280; --faint: #9ca3af;
+    --accent: #2563eb; --accent-soft: #eff6ff; --accent-text: #1d4ed8;
+    --danger: #dc2626; --ok: #16a34a;
+    --radius: 10px; --shadow: 0 1px 2px rgba(16,24,40,.06); --shadow-lg: 0 12px 32px rgba(16,24,40,.14);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; font: 14px/1.45 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
+  input, select, textarea, button { font: inherit; color: inherit; }
+  input, select, textarea { background: #fff; border: 1px solid var(--line-strong); border-radius: 8px; padding: 7px 10px; outline: none; transition: border-color .15s, box-shadow .15s; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  button { cursor: pointer; border: 1px solid var(--line-strong); background: #fff; border-radius: 8px; padding: 7px 12px; font-weight: 500; transition: background .15s, border-color .15s; }
+  button:hover { background: var(--soft); }
+  button:disabled { opacity: .5; cursor: default; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-text); }
+  .btn-ghost { border-color: transparent; background: transparent; color: var(--muted); }
+  .btn-ghost:hover { background: var(--hover); color: var(--text); }
+  .btn-danger { color: var(--danger); border-color: transparent; background: transparent; }
+  .btn-danger:hover { background: #fef2f2; }
+  a { color: var(--accent); text-decoration: none; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .hidden { display: none !important; }
+  .spacer { flex: 1; }
+
+  /* ---------- en-tête ---------- */
+  header { display: flex; align-items: center; gap: 16px; padding: 0 20px; height: 60px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+  .logo { font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .logo span { width: 26px; height: 26px; border-radius: 7px; background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 14px; }
+  .tabs { display: flex; gap: 2px; background: var(--soft); padding: 3px; border-radius: 9px; }
+  .tabs a { color: var(--muted); padding: 5px 12px; border-radius: 7px; font-weight: 500; white-space: nowrap; }
+  .tabs a:hover { color: var(--text); }
+  .tabs a.active { background: #fff; color: var(--text); box-shadow: var(--shadow); }
+  .search { position: relative; flex: 1; max-width: 420px; margin-left: auto; }
+  .search input { width: 100%; padding-left: 34px; background: var(--soft); border-color: transparent; }
+  .search input:focus { background: #fff; }
+  .search::before { content: "⌕"; position: absolute; left: 11px; top: 50%; transform: translateY(-52%); color: var(--faint); font-size: 17px; }
+
+  /* ---------- barre de filtres ---------- */
+  .filterbar { display: flex; align-items: center; gap: 10px; padding: 12px 20px 0; flex-wrap: wrap; }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+  .pill { border-radius: 999px; padding: 5px 12px; font-size: 13px; border: 1px solid var(--line); background: #fff; color: var(--text); font-weight: 500; }
+  .pill .n { color: var(--faint); margin-left: 5px; font-weight: 400; }
+  .pill:hover { border-color: var(--line-strong); background: #fff; }
+  .pill.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); }
+  .pill.on .n { color: var(--accent-text); }
+  .active-filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 8px 20px 0; }
+  .active-filters:empty { display: none; }
+  .af { display: inline-flex; align-items: center; gap: 6px; background: var(--soft); border-radius: 6px; padding: 3px 4px 3px 9px; font-size: 12px; }
+  .af b { font-weight: 500; color: var(--muted); }
+  .af button { border: none; background: none; padding: 0 5px; color: var(--muted); font-size: 15px; line-height: 1; }
+  .af button:hover { color: var(--text); }
+  .count-badge { background: var(--accent); color: #fff; border-radius: 999px; font-size: 11px; padding: 0 6px; margin-left: 4px; }
+
+  /* ---------- mise en page ---------- */
+  .layout { flex: 1; display: flex; min-height: 0; }
+  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  aside { width: 260px; flex-shrink: 0; border-right: 1px solid var(--line); overflow-y: auto; padding: 8px 16px 20px; }
+  aside details { border-bottom: 1px solid var(--line); padding: 10px 0; }
+  aside details:last-of-type { border-bottom: none; }
+  aside summary { cursor: pointer; font-weight: 600; font-size: 13px; list-style: none; display: flex; justify-content: space-between; align-items: center; padding: 2px 0; }
+  aside summary::-webkit-details-marker { display: none; }
+  aside summary::after { content: "›"; color: var(--faint); font-size: 18px; transform: rotate(90deg); transition: transform .15s; }
+  aside details:not([open]) summary::after { transform: rotate(0); }
+  aside .field { margin-top: 10px; }
+  aside label.lbl { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  aside select, aside input[type=search] { width: 100%; }
+  .checklist { display: flex; flex-direction: column; max-height: 210px; overflow-y: auto; margin-top: 8px; }
+  .checklist label { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .checklist label:hover { background: var(--soft); }
+  .checklist .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .checklist .n { color: var(--faint); font-size: 12px; }
+  .checklist input { margin: 0; accent-color: var(--accent); }
+
+  /* ---------- tableau kanban ---------- */
+  .toolbar { display: flex; align-items: center; gap: 10px; padding: 12px 20px; }
+  .toolbar select { padding: 5px 8px; font-size: 13px; }
+  #board { flex: 1; display: flex; gap: 14px; padding: 0 20px 20px; overflow-x: auto; align-items: flex-start; }
+  .column { background: var(--soft); border-radius: 12px; width: 280px; min-width: 280px; max-height: 100%; display: flex; flex-direction: column; }
+  .column-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px; font-weight: 600; font-size: 13px; }
+  .column-head .n { color: var(--muted); font-weight: 500; margin-left: auto; background: #fff; border-radius: 999px; padding: 0 8px; font-size: 12px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .cards { padding: 4px 10px 10px; overflow-y: auto; min-height: 80px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .column.over { outline: 2px dashed var(--accent); outline-offset: -3px; }
+  .no-results { margin: 0 20px 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; display: flex; align-items: center; gap: 12px; background: #fffbeb; border-color: #fde68a; }
+  .empty { color: var(--faint); font-size: 12px; text-align: center; padding: 18px 0; border: 1px dashed var(--line-strong); border-radius: 8px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 11px 12px; cursor: pointer; box-shadow: var(--shadow); transition: border-color .15s, box-shadow .15s; }
+  .card:hover { border-color: var(--line-strong); box-shadow: 0 4px 12px rgba(16,24,40,.08); }
+  .card.selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .card { position: relative; }
+  .card .pick { position: absolute; top: 9px; right: 9px; width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--line-strong); background: #fff; display: grid; place-items: center; font-size: 12px; color: #fff; opacity: 0; transition: opacity .12s; padding: 0; }
+  .card:hover .pick, .picking .card .pick { opacity: 1; }
+  .card .pick:hover { border-color: var(--accent); background: #fff; }
+  .card-title { padding-right: 22px; }
+  .card.picked { background: var(--accent-soft); border-color: var(--accent); }
+  .card.picked .pick { opacity: 1; background: var(--accent); border-color: var(--accent); }
+  .card.group-drag { opacity: .35; }
+  .column-head .select-all { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--accent); background: none; border: none; padding: 0 4px; opacity: 0; }
+  .column:hover .select-all, .picking .select-all { opacity: 1; }
+  .column-head .select-all + .n { margin-left: 0; }
+  .bulkbar { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); width: max-content; background: var(--text); color: #fff; border-radius: 12px; padding: 8px 8px 8px 16px; display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-lg); z-index: 30; flex-wrap: wrap; max-width: calc(100vw - 24px); }
+  .bulkbar .sep { width: 1px; align-self: stretch; background: rgba(255,255,255,.2); }
+  .bulkbar .lbl { color: #9ca3af; font-size: 12px; }
+  .bulkbar button { background: transparent; border-color: transparent; color: #fff; padding: 5px 9px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+  .bulkbar button:hover { background: rgba(255,255,255,.12); }
+  .bulkbar .del { color: #fca5a5; }
+  .card-title { font-weight: 600; font-size: 13.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card-meta { color: var(--muted); font-size: 12px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-foot { display: flex; align-items: center; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
+  .tag { font-size: 11px; padding: 1px 7px; border-radius: 5px; background: var(--soft); color: #374151; white-space: nowrap; }
+  .tag.cat { background: var(--accent-soft); color: var(--accent-text); font-weight: 500; }
+  .card-date { margin-left: auto; color: var(--faint); font-size: 11px; white-space: nowrap; }
+  .sortable-ghost { opacity: .35; }
+  .sortable-drag { transform: rotate(1.5deg); box-shadow: var(--shadow-lg) !important; }
+
+  /* ---------- entreprises ---------- */
+  #companies { flex: 1; overflow: auto; padding: 0 20px 20px; }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td.wrap { white-space: normal; color: var(--muted); font-size: 13px; }
+  tr:last-child td { border-bottom: none; }
+  th { font-size: 12px; font-weight: 600; color: var(--muted); background: var(--soft); cursor: pointer; user-select: none; }
+  th:hover { color: var(--text); }
+  th.num, td.num { text-align: right; }
+  td.num.zero { color: var(--line-strong); }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover td { background: var(--soft); }
+
+  /* ---------- paramètres ---------- */
+  #settings { flex: 1; overflow-y: auto; padding: 24px 20px 100px; }
+  .settings-inner { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+  .settings-inner h2 { margin: 0 0 2px; font-size: 20px; }
+  .section h3 { margin: 0; font-size: 15px; }
+  .section > p { margin: 3px 0 12px; color: var(--muted); font-size: 13px; }
+  .section { padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+  .section:last-child { border-bottom: none; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin-top: 14px; }
+  .form-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 500; }
+  .checks { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 14px; }
+  .checks label { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .checks input { accent-color: var(--accent); }
+  .chip-editor { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px; min-height: 40px; background: #fff; cursor: text; }
+  .chip-editor:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .chip-editor input { border: none; flex: 1; min-width: 140px; padding: 3px 4px; box-shadow: none !important; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 2px 4px 2px 8px; font-size: 12.5px; }
+  .chip button { border: none; background: none; padding: 0 4px; color: var(--faint); font-size: 15px; line-height: 1; }
+  .chip button:hover { color: var(--danger); background: none; }
+  .cat-list { display: flex; flex-direction: column; gap: 10px; }
+  .cat-row { display: grid; grid-template-columns: 180px 1fr auto; gap: 8px; align-items: start; }
+  .cat-row > input { font-weight: 600; }
+  .savebar { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: #fff; border-radius: 12px; padding: 10px 10px 10px 18px; display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow-lg); z-index: 30; }
+  .savebar button { border-color: transparent; }
+  .savebar .btn-ghost { color: #d1d5db; }
+  .savebar .btn-ghost:hover { background: rgba(255,255,255,.1); color: #fff; }
+
+  /* ---------- panneau de détail ---------- */
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100vw); background: #fff; border-left: 1px solid var(--line); box-shadow: var(--shadow-lg); z-index: 20; display: flex; flex-direction: column; transform: translateX(100%); transition: transform .2s ease; }
+  .drawer.open { transform: none; }
+  .drawer:not(.open) { box-shadow: none; visibility: hidden; transition: transform .2s ease, visibility 0s .2s; }
+  .drawer-head { padding: 18px 20px 14px; border-bottom: 1px solid var(--line); display: flex; gap: 10px; align-items: flex-start; }
+  .drawer-head h2 { margin: 0; font-size: 17px; line-height: 1.35; }
+  .drawer-body { flex: 1; overflow-y: auto; padding: 16px 20px 24px; display: flex; flex-direction: column; gap: 18px; }
+  .drawer h4 { margin: 0 0 7px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .status-picker { display: flex; flex-wrap: wrap; gap: 6px; }
+  .status-picker button { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 5px 10px; border-color: var(--line); }
+  .status-picker button.on { border-color: var(--text); background: var(--text); color: #fff; }
+  .info-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 13px; }
+  .info-grid dt { color: var(--muted); }
+  .info-grid dd { margin: 0; }
+  .desc { white-space: pre-wrap; font-size: 13px; line-height: 1.6; color: #374151; }
+  .drawer textarea { width: 100%; min-height: 80px; resize: vertical; }
+  .saved-hint { font-size: 12px; color: var(--ok); margin-left: 8px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+  /* ---------- fenêtre de recherche ---------- */
+  dialog { border: none; border-radius: 14px; padding: 0; width: min(620px, 94vw); box-shadow: var(--shadow-lg); }
+  dialog::backdrop { background: rgba(17,24,39,.35); }
+  .modal { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+  .modal h2 { margin: 0; font-size: 18px; }
+  .modal label.lbl { font-size: 13px; font-weight: 500; display: block; margin-bottom: 5px; }
+  .modal textarea { width: 100%; min-height: 70px; resize: vertical; }
+  /* panneau "Chercher des offres" */
+  .drawer-foot { padding: 12px 20px; border-top: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
+  .sd-section h4 { display: flex; align-items: baseline; gap: 8px; }
+  .sd-section h4 .hint { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--faint); font-size: 12px; }
+  .suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .suggest .pill { font-size: 12px; padding: 3px 10px; }
+  .suggest .pill::before { content: "+ "; color: var(--faint); }
+  .suggest .pill.on::before { content: "✓ "; color: var(--accent-text); }
+  .contract-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .plan { background: var(--soft); border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+  .plan .total { font-weight: 600; }
+  .plan .queries { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; max-height: 120px; overflow-y: auto; }
+  .plan .warn { color: #b45309; margin-top: 6px; font-size: 12px; }
+  .remember { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .remember input { accent-color: var(--accent); }
+
+  /* indicateur de recherche en arrière-plan */
+  .scrape-status { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 999px; padding: 4px 6px 4px 12px; font-size: 13px; max-width: 460px; min-width: 0; background: #fff; }
+  .scrape-status .txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; min-width: 0; }
+  .scrape-status .txt b { font-weight: 600; }
+  .scrape-status .new { background: var(--accent-soft); color: var(--accent-text); border-radius: 999px; padding: 1px 8px; font-weight: 600; white-space: nowrap; font-size: 12px; }
+  .scrape-status button { padding: 3px 10px; font-size: 12px; border-radius: 999px; }
+  .scrape-status.done { border-color: #bbf7d0; background: #f0fdf4; }
+  .spinner { width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--accent-soft); border-top-color: var(--accent); animation: spin .8s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .progress { height: 3px; background: var(--accent-soft); position: relative; flex-shrink: 0; }
+  .progress div { position: absolute; inset: 0 auto 0 0; background: var(--accent); transition: width .4s ease; }
+  .log-panel { position: fixed; top: 64px; right: 20px; width: min(520px, calc(100vw - 24px)); background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-lg); z-index: 25; padding: 12px; }
+  .log-panel pre { margin: 8px 0 0; white-space: pre-wrap; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; max-height: 320px; overflow-y: auto; background: var(--soft); padding: 10px 12px; border-radius: 8px; }
+  @keyframes fresh { from { background: #eff6ff; border-color: var(--accent); } }
+  .card.fresh { animation: fresh 2.5s ease-out; }
+
+  .toast { position: fixed; bottom: 20px; left: 20px; background: var(--text); color: #fff; padding: 10px 16px; border-radius: 10px; box-shadow: var(--shadow-lg); z-index: 50; font-size: 13px; opacity: 0; transform: translateY(8px); transition: all .2s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: none; }
+
+  @media (max-width: 860px) {
+    header { gap: 10px; padding: 0 12px; flex-wrap: wrap; height: auto; padding-top: 10px; padding-bottom: 10px; }
+    .search { order: 3; max-width: none; flex-basis: 100%; }
+    .scrape-status { order: 4; flex-basis: 100%; max-width: none; }
+    .bulkbar .sep { display: none; }
+    .log-panel { top: auto; bottom: 12px; right: 12px; }
+    .filterbar { flex-wrap: nowrap; }
+    .pills { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+    .pill { white-space: nowrap; }
+    .logo b { display: none; }
+    aside { position: fixed; z-index: 15; top: 0; bottom: 0; left: 0; background: #fff; box-shadow: var(--shadow-lg); }
+    .filterbar, .toolbar, .active-filters { padding-left: 12px; padding-right: 12px; }
+    #board, #companies { padding-left: 12px; padding-right: 12px; }
+    .cat-row { grid-template-columns: 1fr auto; }
+    .cat-row .chip-editor { grid-column: 1 / -1; grid-row: 2; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span>✓</span><b>Candidatures</b></div>
+  <nav class="tabs">
+    <a href="#kanban" data-view="kanban">Tableau</a>
+    <a href="#entreprises" data-view="entreprises">Entreprises</a>
+    <a href="#parametres" data-view="parametres">Paramètres</a>
+  </nav>
+  <div class="search"><input id="q" type="search" placeholder="Rechercher un poste, une entreprise, une compétence…  ( / )"></div>
+  <div class="scrape-status hidden" id="scrape-status">
+    <span class="spinner" id="ss-spinner"></span>
+    <span class="txt" id="ss-text" title="Voir le détail"></span>
+    <span class="new hidden" id="ss-new"></span>
+    <button class="btn-ghost" id="ss-stop">Arrêter</button>
+    <button class="btn-ghost hidden" id="ss-dismiss" title="Masquer">×</button>
+  </div>
+  <button class="btn-primary" id="btn-scrape">+ Chercher des offres</button>
+</header>
+<div class="progress hidden" id="progress"><div id="progress-bar"></div></div>
+<div class="log-panel hidden" id="log-panel">
+  <div style="display:flex; align-items:center"><b>Détail de la recherche</b><span class="spacer"></span><button class="btn-ghost" id="log-close">×</button></div>
+  <pre id="log"></pre>
+</div>
+
+<div id="filters-area">
+  <div class="filterbar">
+    <button id="toggle-filters">Filtres<span class="count-badge hidden" id="filters-count"></span></button>
+    <div class="pills" id="f-cats"></div>
+  </div>
+  <div class="active-filters" id="active-filters"></div>
+</div>
+
+<div class="layout">
+  <aside id="sidebar">
+    <details open>
+      <summary>Lieu</summary>
+      <div class="field"><label class="lbl" for="f-country">Pays</label><select id="f-country"><option value="">Tous</option></select></div>
+      <div class="field"><label class="lbl" for="f-city">Ville</label><select id="f-city"><option value="">Toutes</option></select></div>
+      <div class="field"><label class="lbl">Zone de recherche</label><div class="checklist" id="f-zones"></div></div>
+    </details>
+    <details>
+      <summary>Entreprise et site</summary>
+      <div class="field"><label class="lbl" for="f-company">Entreprise</label><select id="f-company"><option value="">Toutes</option></select></div>
+      <div class="field"><label class="lbl" for="f-source">Site</label><select id="f-source"><option value="">Tous</option></select></div>
+    </details>
+    <details>
+      <summary>Recherches</summary>
+      <div class="checklist" id="f-tags"></div>
+    </details>
+    <details>
+      <summary>Compétences</summary>
+      <div class="field"><input id="skill-search" type="search" placeholder="Filtrer la liste…"></div>
+      <div class="checklist" id="f-skills"></div>
+    </details>
+  </aside>
+
+  <div class="content">
+    <div class="toolbar" id="toolbar">
+      <span id="total" class="muted small"></span>
+      <span class="spacer"></span>
+      <label class="muted small" for="sort">Trier par</label>
+      <select id="sort">
+        <option value="date">Plus récentes</option>
+        <option value="country-city">Pays puis ville</option>
+        <option value="city">Ville</option>
+        <option value="company">Entreprise A → Z</option>
+        <option value="company-desc">Entreprise Z → A</option>
+        <option value="title">Titre</option>
+      </select>
+    </div>
+
+    <div class="no-results hidden" id="no-results">
+      <span>Aucune offre ne correspond à ces filtres.</span>
+      <button id="no-results-reset">Effacer les filtres</button>
+    </div>
+    <main id="board"></main>
+
+    <main id="companies" class="hidden">
+      <table>
+        <thead><tr id="c-head"></tr></thead>
+        <tbody id="c-body"></tbody>
+      </table>
+    </main>
+
+    <main id="settings" class="hidden">
+      <div class="settings-inner">
+        <div>
+          <h2>Paramètres de recherche</h2>
+          <div class="muted">Ce qui est cherché quand tu cliques sur « Chercher des offres ».</div>
+        </div>
+        <section class="section">
+          <h3>Où chercher</h3>
+          <p>Villes, régions ou pays. Chaque recherche est lancée dans chaque zone. Entrée pour ajouter.</p>
+          <div class="chip-editor" id="cfg-locations"></div>
+          <div class="form-grid">
+            <label>Pays<input id="cfg-country" placeholder="France"></label>
+            <label>Rayon autour d'une ville (km)<input id="cfg-radius" type="number" min="1" max="200"></label>
+          </div>
+        </section>
+        <section class="section">
+          <h3>Quoi chercher</h3>
+          <p>Recherches complètes, envoyées telles quelles aux sites. Chaque recherche devient un tag sur les offres trouvées.</p>
+          <div class="chip-editor" id="cfg-searches"></div>
+          <p style="margin-top:16px">Recherches larges : chaque tag et chaque compétence est cherché séparément, précédé du type de contrat (« stage devops », « stage python »…).</p>
+          <div class="form-grid" style="margin-top:0">
+            <label>Type de contrat<input id="cfg-contract" placeholder="stage, alternance, CDD… (vide = aucun)"></label>
+          </div>
+          <label class="lbl" style="display:block; margin:14px 0 5px; font-size:13px; font-weight:500">Tags de recherche</label>
+          <div class="chip-editor" id="cfg-search-tags"></div>
+          <label class="lbl" style="display:block; margin:14px 0 5px; font-size:13px; font-weight:500">Compétences à chercher</label>
+          <div class="chip-editor" id="cfg-search-skills"></div>
+        </section>
+        <section class="section">
+          <h3>Catégories automatiques</h3>
+          <p>Une offre entre dans une catégorie si son titre contient un mot-clé, ou si sa description en contient au moins 3.</p>
+          <div class="cat-list" id="cfg-cats"></div>
+          <div style="margin-top:10px"><button id="add-cat">+ Ajouter une catégorie</button></div>
+        </section>
+        <section class="section">
+          <h3>Compétences détectées</h3>
+          <p>Repérées automatiquement dans les descriptions des offres.</p>
+          <div class="chip-editor" id="cfg-skills"></div>
+          <div style="margin-top:10px; display:flex; gap:10px; align-items:center">
+            <button id="redetect">Appliquer aux offres déjà enregistrées</button>
+            <span class="muted small" id="redetect-status"></span>
+          </div>
+        </section>
+        <section class="section">
+          <h3>Options</h3>
+          <div class="form-grid">
+            <label>Résultats par site, recherche et zone<input id="cfg-limit" type="number" min="1" max="200"></label>
+            <label>Âge maximum des offres (jours)<input id="cfg-age" type="number" min="1" max="365"></label>
+            <label>Recherches en parallèle<input id="cfg-parallel" type="number" min="1" max="32"></label>
+            <label>Max simultanées par site<input id="cfg-per-site" type="number" min="1" max="8"></label>
+            <label>Clé SerpAPI (Google Jobs)<input id="cfg-serpapi" type="password" autocomplete="off" placeholder="optionnelle"></label>
+          </div>
+          <div class="checks" id="cfg-sites"></div>
+        </section>
+      </div>
+      <div class="savebar hidden" id="savebar">
+        <span>Modifications non enregistrées</span>
+        <button class="btn-ghost" id="cancel-config">Annuler</button>
+        <button class="btn-primary" id="save-config">Enregistrer</button>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- panneau de détail -->
+<div class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <div style="flex:1; min-width:0">
+      <h2 id="d-title"></h2>
+      <div class="muted" id="d-sub" style="margin-top:3px"></div>
+    </div>
+    <button class="btn-ghost" id="d-close" title="Fermer (Échap)" style="font-size:18px; padding:2px 9px">×</button>
+  </div>
+  <div class="drawer-body">
+    <div style="display:flex; gap:8px">
+      <a class="btn-primary" id="d-link" target="_blank" rel="noopener" style="padding:8px 14px; border-radius:8px; color:#fff; font-weight:500">Ouvrir l'offre ↗</a>
+      <span class="spacer"></span>
+      <button class="btn-danger" id="d-delete">Supprimer</button>
+    </div>
+    <div>
+      <h4>Statut</h4>
+      <div class="status-picker" id="d-status"></div>
+    </div>
+    <dl class="info-grid" id="d-info"></dl>
+    <div>
+      <h4>Notes <span class="saved-hint hidden" id="notes-saved">enregistré ✓</span></h4>
+      <textarea id="d-notes" placeholder="Date de candidature, contact, relance…"></textarea>
+    </div>
+    <div>
+      <h4>Tags</h4>
+      <div class="chip-editor" id="d-tags"></div>
+    </div>
+    <div>
+      <h4>Compétences</h4>
+      <div class="chip-editor" id="d-skills"></div>
+    </div>
+    <div>
+      <h4>Description</h4>
+      <div class="desc" id="d-desc"></div>
+    </div>
+  </div>
+</div>
+
+<!-- fenêtre de recherche d'offres -->
+<div class="drawer" id="search-drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <div style="flex:1">
+      <h2>Chercher des offres</h2>
+      <div class="muted small" style="margin-top:3px">Pré-rempli avec tes paramètres. Une offre n'a pas besoin de tout cocher : chaque recherche, tag ou compétence est cherché séparément.</div>
+    </div>
+    <button class="btn-ghost" id="sd-close" title="Fermer (Échap)" style="font-size:18px; padding:2px 9px">×</button>
+  </div>
+  <div class="drawer-body">
+    <div class="sd-section">
+      <h4>Quoi chercher <span class="hint">recherches complètes, envoyées telles quelles</span></h4>
+      <div class="chip-editor" id="sd-searches"></div>
+    </div>
+    <div class="sd-section">
+      <h4>Type de contrat <span class="hint">ajouté devant chaque tag et compétence</span></h4>
+      <div class="contract-pills" id="sd-contracts"></div>
+    </div>
+    <div class="sd-section">
+      <h4>Tags <span class="hint">domaines, chacun cherché séparément</span></h4>
+      <div class="chip-editor" id="sd-tags"></div>
+      <div class="suggest" id="sd-tags-suggest"></div>
+    </div>
+    <div class="sd-section">
+      <h4>Compétences <span class="hint">lesquelles chercher ?</span></h4>
+      <div class="chip-editor" id="sd-skills"></div>
+      <input id="sd-skill-filter" type="search" placeholder="Filtrer les suggestions…" style="width:100%; margin-top:8px">
+      <div class="suggest" id="sd-skills-suggest"></div>
+    </div>
+    <div class="sd-section">
+      <h4>Où <span class="hint">villes, régions ou pays</span></h4>
+      <div class="chip-editor" id="sd-locations"></div>
+      <div class="suggest" id="sd-locations-suggest"></div>
+    </div>
+    <div class="sd-section">
+      <h4>Sites</h4>
+      <div class="checks" id="sd-sites" style="margin-top:0"></div>
+    </div>
+    <div class="plan" id="sd-plan"></div>
+  </div>
+  <div class="drawer-foot">
+    <label class="remember"><input type="checkbox" id="sd-remember" checked> Garder ces choix pour la prochaine fois</label>
+    <span class="spacer"></span>
+    <button class="btn-ghost" id="sd-cancel">Annuler</button>
+    <button class="btn-primary" id="sd-start">Lancer</button>
+  </div>
+</div>
+
+<div class="bulkbar hidden" id="bulkbar">
+  <b id="bulk-count"></b>
+  <span class="sep"></span>
+  <span class="lbl">Déplacer vers</span>
+  <span id="bulk-statuses" style="display:flex; flex-wrap:wrap; gap:2px"></span>
+  <span class="sep"></span>
+  <button class="del" id="bulk-delete">Supprimer</button>
+  <button id="bulk-clear" title="Désélectionner (Échap)">×</button>
+</div>
+<div class="toast" id="toast"></div>
+<datalist id="dl-skills"></datalist>
+<datalist id="dl-tags"></datalist>
+<datalist id="dl-zones"></datalist>
+<datalist id="dl-cats"></datalist>
+
+<script>
+const STATUS_COLORS = {
+  a_trier: "#9ca3af", interesse: "#3b82f6", postule: "#8b5cf6", en_attente: "#f59e0b",
+  entretien: "#10b981", refuse: "#ef4444", pas_interesse: "#d1d5db",
+};
+let STATUSES = [], JOBS = [], CATEGORY_ORDER = [], current = null;
+let companySort = { key: "count", desc: true };
+const sel = { cats: new Set(), tags: new Set(), zones: new Set(), skills: new Set() };
+
+const $ = s => document.querySelector(s);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const api = (url, opts = {}) => fetch(url, { headers: { "Content-Type": "application/json" }, ...opts })
+  .then(async r => { if (!r.ok) throw new Error((await r.text()).replace(/<[^>]+>/g, " ").trim() || r.statusText); return r.status === 204 ? null : r.json(); });
+const companyOf = j => (j.company || "").trim() || "(inconnue)";
+const collator = new Intl.Collator("fr", { sensitivity: "base" });
+const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } },
+                set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+let toastTimer;
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+// date de publication si connue, sinon date d'ajout dans la base
+const dateKey = j => (j.date_posted || j.created_at || "").slice(0, 10);
+function relativeDate(d) {
+  if (!d) return "";
+  const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(d + "T00:00:00")) / 864e5);
+  if (Number.isNaN(days)) return "";
+  if (days <= 0) return "aujourd'hui";
+  if (days === 1) return "hier";
+  if (days < 30) return `il y a ${days} j`;
+  return new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+}
+
+/* ---------- éditeur de chips ---------- */
+function chipEditor(container, { placeholder = "Ajouter…", list = null, onChange = () => {} } = {}) {
+  let values = [];
+  const input = el("input");
+  input.placeholder = placeholder;
+  if (list) input.setAttribute("list", list);
+  const add = raw => {
+    let changed = false;
+    raw.split(",").map(v => v.trim()).filter(Boolean).forEach(v => {
+      if (!values.some(x => x.toLowerCase() === v.toLowerCase())) { values.push(v); changed = true; }
+    });
+    input.value = ""; draw();
+    if (changed) onChange(values);
+    input.focus();
+  };
+  input.addEventListener("keydown", e => {
+    if ((e.key === "Enter" || e.key === ",") && input.value.trim()) { e.preventDefault(); add(input.value); }
+    else if (e.key === "Backspace" && !input.value && values.length) { values.pop(); draw(); onChange(values); }
+  });
+  function draw() {
+    container.replaceChildren(...values.map((v, i) => {
+      const c = el("span", "chip", v);
+      const x = el("button", null, "×");
+      x.type = "button"; x.title = "Retirer";
+      x.onclick = e => { e.stopPropagation(); values.splice(i, 1); draw(); onChange(values); };
+      c.append(x);
+      return c;
+    }), input);
+  }
+  container.addEventListener("click", e => { if (e.target === container) input.focus(); });
+  draw();
+  return {
+    get: () => { if (input.value.trim()) add(input.value); return [...values]; },
+    set: v => { values = [...v]; input.value = ""; draw(); },
+  };
+}
+
+/* ---------- chargement ---------- */
+function countBy(fn, jobs = JOBS) {
+  const m = new Map();
+  for (const j of jobs) for (const v of [].concat(fn(j))) if (v) m.set(v, (m.get(v) || 0) + 1);
+  return m;
+}
+
+function fillSelect(select, counts) {
+  const keep = select.value;
+  const entries = [...counts.entries()].sort((a, b) => collator.compare(a[0], b[0]));
+  select.length = 1;
+  entries.forEach(([v, n]) => select.add(new Option(`${v} (${n})`, v)));
+  select.value = counts.has(keep) ? keep : "";
+}
+
+function fillCities() {
+  const country = $("#f-country").value;
+  fillSelect($("#f-city"), countBy(j => j.city, JOBS.filter(j => !country || j.country === country)));
+}
+
+let freshIds = new Set(), dragging = false, refreshPending = false;
+const picked = new Set();   // cartes sélectionnées (multi-sélection)
+let lastPicked = null;      // pour Maj+clic
+async function load({ markFresh = false } = {}) {
+  const [meta, jobs] = await Promise.all([api("/api/meta"), api("/api/jobs")]);
+  const known = new Set(JOBS.map(j => j.id));
+  freshIds = markFresh ? new Set(jobs.filter(j => !known.has(j.id)).map(j => j.id)) : new Set();
+  STATUSES = meta.statuses; JOBS = jobs; CATEGORY_ORDER = meta.categories;
+  if (current) current = JOBS.find(j => j.id === current.id) || current;
+  fillSelect($("#f-country"), countBy(j => j.country));
+  fillCities();
+  fillSelect($("#f-company"), countBy(companyOf));
+  fillSelect($("#f-source"), countBy(j => (j.source || "").split(" ")[0]));
+  $("#dl-skills").replaceChildren(...meta.skills.map(s => new Option(s)));
+  $("#dl-tags").replaceChildren(...meta.tags.map(s => new Option(s)));
+  $("#dl-cats").replaceChildren(...meta.categories.map(c => new Option(c)));
+  $("#dl-zones").replaceChildren(...[...new Set([...meta.zones, ...meta.cities])].map(s => new Option(s)));
+  renderSideLists();
+  render();
+}
+
+function renderSideLists() {
+  // catégories : boutons en haut
+  const cats = countBy(j => j.categories);
+  for (const c of [...sel.cats]) if (!cats.has(c)) sel.cats.delete(c);
+  const names = [...CATEGORY_ORDER.filter(c => cats.has(c)), ...[...cats.keys()].filter(c => !CATEGORY_ORDER.includes(c))];
+  const all = el("button", "pill" + (sel.cats.size ? "" : " on"), "Toutes");
+  all.onclick = () => { sel.cats.clear(); renderSideLists(); render(); };
+  $("#f-cats").replaceChildren(all, ...names.map(name => {
+    const b = el("button", "pill" + (sel.cats.has(name) ? " on" : ""), name);
+    b.append(el("span", "n", cats.get(name)));
+    b.onclick = () => { sel.cats.has(name) ? sel.cats.delete(name) : sel.cats.add(name); renderSideLists(); render(); };
+    return b;
+  }));
+
+  const checklist = (target, counts, set, { filter = "", selectedFirst = false } = {}) => {
+    for (const v of [...set]) if (!counts.has(v)) set.delete(v);
+    const entries = [...counts.entries()]
+      .filter(([v]) => !filter || v.toLowerCase().includes(filter) || set.has(v))
+      .sort((a, b) => (selectedFirst ? set.has(b[0]) - set.has(a[0]) : 0) || b[1] - a[1] || collator.compare(a[0], b[0]));
+    $(target).replaceChildren(...(entries.length ? entries.map(([v, n]) => {
+      const l = el("label"), cb = el("input");
+      cb.type = "checkbox"; cb.checked = set.has(v);
+      cb.onchange = () => { cb.checked ? set.add(v) : set.delete(v); render(); };
+      l.append(cb, el("span", "name", v), el("span", "n", n));
+      l.title = v;
+      return l;
+    }) : [el("span", "muted small", "rien pour l'instant")]));
+  };
+  checklist("#f-zones", countBy(j => j.zones), sel.zones);
+  checklist("#f-tags", countBy(j => j.tags), sel.tags);
+  checklist("#f-skills", countBy(j => j.skills), sel.skills, { filter: $("#skill-search").value.trim().toLowerCase(), selectedFirst: true });
+}
+
+/* ---------- filtres / tri ---------- */
+function matches(j) {
+  const q = $("#q").value.trim().toLowerCase(), country = $("#f-country").value, city = $("#f-city").value,
+        company = $("#f-company").value, src = $("#f-source").value;
+  if (country && j.country !== country) return false;
+  if (city && j.city !== city) return false;
+  if (company && companyOf(j) !== company) return false;
+  if (src && !(j.source || "").startsWith(src)) return false;
+  if (sel.cats.size && !j.categories.some(c => sel.cats.has(c))) return false;
+  if (sel.zones.size && !j.zones.some(z => sel.zones.has(z))) return false;
+  if (sel.tags.size && !j.tags.some(t => sel.tags.has(t))) return false;
+  for (const s of sel.skills) if (!j.skills.includes(s)) return false;
+  if (q) {
+    const hay = [j.title, j.company, j.location, j.country, j.skills.join(" "), j.tags.join(" "), j.categories.join(" "), j.notes].join(" ").toLowerCase();
+    if (!q.split(/\s+/).every(w => hay.includes(w))) return false;
+  }
+  return true;
+}
+
+const SORTS = {
+  date: (a, b) => dateKey(b).localeCompare(dateKey(a)) || (b.created_at || "").localeCompare(a.created_at || "") || b.id - a.id,
+  "country-city": (a, b) => collator.compare(a.country || "~", b.country || "~") || collator.compare(a.city || "~", b.city || "~") || SORTS.date(a, b),
+  city: (a, b) => collator.compare(a.city || "~", b.city || "~") || SORTS.date(a, b),
+  company: (a, b) => collator.compare(companyOf(a), companyOf(b)) || SORTS.date(a, b),
+  "company-desc": (a, b) => collator.compare(companyOf(b), companyOf(a)) || SORTS.date(a, b),
+  title: (a, b) => collator.compare(a.title, b.title),
+};
+
+// pastilles "filtres actifs", chacune avec un × pour l'enlever
+function renderActiveFilters() {
+  const items = [];
+  const push = (label, value, clear) => items.push({ label, value, clear });
+  if ($("#q").value.trim()) push("Recherche", $("#q").value.trim(), () => $("#q").value = "");
+  if ($("#f-country").value) push("Pays", $("#f-country").value, () => { $("#f-country").value = ""; fillCities(); });
+  if ($("#f-city").value) push("Ville", $("#f-city").value, () => $("#f-city").value = "");
+  if ($("#f-company").value) push("Entreprise", $("#f-company").value, () => $("#f-company").value = "");
+  if ($("#f-source").value) push("Site", $("#f-source").value, () => $("#f-source").value = "");
+  sel.zones.forEach(z => push("Zone", z, () => sel.zones.delete(z)));
+  sel.tags.forEach(t => push("Recherche", t, () => sel.tags.delete(t)));
+  sel.skills.forEach(s => push("Compétence", s, () => sel.skills.delete(s)));
+  const box = $("#active-filters");
+  box.replaceChildren(...items.map(it => {
+    const c = el("span", "af");
+    c.append(el("b", null, it.label), document.createTextNode(it.value));
+    const x = el("button", null, "×");
+    x.title = "Retirer ce filtre";
+    x.onclick = () => { it.clear(); renderSideLists(); render(); };
+    c.append(x);
+    return c;
+  }));
+  if (items.length > 1) {
+    const reset = el("button", "btn-ghost small", "Tout effacer");
+    reset.style.padding = "2px 8px";
+    reset.onclick = resetFilters;
+    box.append(reset);
+  }
+  const n = items.length - ($("#q").value.trim() ? 1 : 0);
+  $("#filters-count").textContent = n;
+  $("#filters-count").classList.toggle("hidden", !n);
+}
+
+function resetFilters() {
+  ["#q", "#f-country", "#f-city", "#f-company", "#f-source", "#skill-search"].forEach(s => $(s).value = "");
+  Object.values(sel).forEach(s => s.clear());
+  fillCities(); renderSideLists(); render();
+}
+
+/* ---------- rendu ---------- */
+function currentView() {
+  return { "#entreprises": "entreprises", "#parametres": "parametres" }[location.hash] || "kanban";
+}
+
+function render() {
+  const view = currentView();
+  document.querySelectorAll(".tabs a").forEach(t => t.classList.toggle("active", t.dataset.view === view));
+  const isSettings = view === "parametres";
+  $("#no-results").classList.add("hidden");
+  $("#board").classList.toggle("hidden", view !== "kanban");
+  $("#companies").classList.toggle("hidden", view !== "entreprises");
+  $("#settings").classList.toggle("hidden", !isSettings);
+  $("#filters-area").classList.toggle("hidden", isSettings);
+  $("#toolbar").classList.toggle("hidden", isSettings);
+  $("#sidebar").classList.toggle("hidden", isSettings || store.get("filters") !== "open");
+  $("#sort").parentElement.querySelectorAll("label, select").forEach(e => e.classList.toggle("hidden", view !== "kanban"));
+  if (isSettings) return;
+  renderActiveFilters();
+  const visible = JOBS.filter(matches).sort(SORTS[$("#sort").value]);
+  // on ne garde sélectionnées que les offres visibles (pas d'action sur des offres masquées par un filtre)
+  const visibleIds = new Set(view === "kanban" ? visible.map(j => j.id) : []);
+  for (const id of [...picked]) if (!visibleIds.has(id)) picked.delete(id);
+  renderBulkbar();
+  $("#no-results").classList.toggle("hidden", visible.length > 0 || JOBS.length === 0);
+  $("#total").textContent = visible.length === JOBS.length ? `${JOBS.length} offres` : `${visible.length} offres sur ${JOBS.length}`;
+  if (view === "entreprises") renderCompanies(visible); else renderBoard(visible);
+}
+
+function card(j) {
+  const c = el("div", "card" + (current && current.id === j.id ? " selected" : "") + (freshIds.has(j.id) ? " fresh" : "") + (picked.has(j.id) ? " picked" : ""));
+  c.dataset.id = j.id;
+  const box = el("button", "pick", "✓");
+  box.type = "button"; box.title = "Sélectionner";
+  box.addEventListener("click", e => { e.stopPropagation(); e.shiftKey ? pickRange(j) : togglePick(j.id); });
+  c.append(box);
+  c.append(el("div", "card-title", j.title));
+  const place = [j.city || j.location, j.country && j.country !== "France" ? j.country : ""].filter(Boolean).join(", ");
+  c.append(el("div", "card-meta", [j.company, place].filter(Boolean).join(" · ")));
+  const foot = el("div", "card-foot");
+  j.categories.slice(0, 2).forEach(cat => foot.append(el("span", "tag cat", cat)));
+  j.skills.slice(0, 3).forEach(s => foot.append(el("span", "tag", s)));
+  foot.append(el("span", "card-date", relativeDate(dateKey(j))));
+  c.append(foot);
+  c.addEventListener("click", e => {
+    if (e.shiftKey && lastPicked != null) pickRange(j);
+    else if (e.ctrlKey || e.metaKey || picked.size) togglePick(j.id);  // en mode sélection, un clic sélectionne
+    else openDetail(j);
+  });
+  if (!window.Sortable) {  // repli si la librairie n'a pas pu être chargée
+    c.draggable = true;
+    c.addEventListener("dragstart", e => e.dataTransfer.setData("text/plain", j.id));
+  }
+  return c;
+}
+
+function renderBoard(visible) {
+  const scroll = { left: $("#board").scrollLeft, cols: {} };
+  document.querySelectorAll("#board .cards").forEach(c => scroll.cols[c.dataset.status] = c.scrollTop);
+  requestAnimationFrame(() => {
+    $("#board").scrollLeft = scroll.left;
+    document.querySelectorAll("#board .cards").forEach(c => c.scrollTop = scroll.cols[c.dataset.status] || 0);
+  });
+  $("#board").replaceChildren(...STATUSES.map(s => {
+    const col = el("section", "column");
+    const list = visible.filter(j => j.status === s.key);
+    const head = el("div", "column-head");
+    const dot = el("span", "dot"); dot.style.background = STATUS_COLORS[s.key] || "#9ca3af";
+    head.append(dot, el("span", null, s.label));
+    if (list.length) {
+      const allPicked = list.every(j => picked.has(j.id));
+      const sa = el("button", "select-all", allPicked ? "Désélectionner" : "Tout sélectionner");
+      sa.onclick = () => { list.forEach(j => allPicked ? picked.delete(j.id) : picked.add(j.id)); render(); };
+      head.append(sa);
+    }
+    head.append(el("span", "n", list.length));
+    const cards = el("div", "cards");
+    cards.dataset.status = s.key;
+    if (list.length) cards.append(...list.map(card));
+    else cards.append(el("div", "empty", "Glisse une offre ici"));
+    col.append(head, cards);
+    if (window.Sortable) {
+      Sortable.create(cards, {
+        group: "jobs", sort: false, animation: 150, filter: ".empty", delay: 150, delayOnTouchOnly: true,
+        onStart: e => {
+          dragging = true;
+          if (picked.has(+e.item.dataset.id))
+            document.querySelectorAll(".card.picked").forEach(c => c !== e.item && c.classList.add("group-drag"));
+        },
+        onEnd: () => { dragging = false; document.querySelectorAll(".group-drag").forEach(c => c.classList.remove("group-drag")); if (refreshPending) { refreshPending = false; load({ markFresh: true }); } },
+        onAdd: e => {
+          const id = +e.item.dataset.id;
+          if (picked.has(id) && picked.size > 1) bulkStatus([...picked], e.to.dataset.status);
+          else setStatus(id, e.to.dataset.status);
+        },
+      });
+    } else {
+      col.addEventListener("dragover", e => { e.preventDefault(); col.classList.add("over"); });
+      col.addEventListener("dragleave", e => { if (!col.contains(e.relatedTarget)) col.classList.remove("over"); });
+      col.addEventListener("drop", e => { e.preventDefault(); col.classList.remove("over"); setStatus(+e.dataTransfer.getData("text/plain"), s.key); });
+    }
+    return col;
+  }));
+}
+
+function renderCompanies(visible) {
+  const groups = new Map();
+  for (const j of visible) {
+    const name = companyOf(j);
+    if (!groups.has(name)) groups.set(name, { name, cities: new Set(), count: 0, last: "", ...Object.fromEntries(STATUSES.map(s => [s.key, 0])) });
+    const g = groups.get(name);
+    g.count++; g[j.status]++;
+    if (j.city) g.cities.add(j.city);
+    if (dateKey(j) > g.last) g.last = dateKey(j);
+  }
+  for (const g of groups.values()) g.citiesText = [...g.cities].sort(collator.compare).join(", ");
+  const cols = [{ key: "name", label: "Entreprise" }, { key: "count", label: "Offres", num: true },
+    ...STATUSES.filter(s => s.key !== "a_trier").map(s => ({ key: s.key, label: s.label, num: true })),
+    { key: "citiesText", label: "Villes", wrap: true }, { key: "last", label: "Dernière offre" }];
+  $("#c-head").replaceChildren(...cols.map(c => {
+    const arrow = companySort.key === c.key ? (companySort.desc ? " ↓" : " ↑") : "";
+    const th = el("th", c.num ? "num" : "", c.label + arrow);
+    th.onclick = () => { companySort = { key: c.key, desc: companySort.key === c.key ? !companySort.desc : !!c.num }; render(); };
+    return th;
+  }));
+  const { key, desc } = companySort;
+  const rows = [...groups.values()].sort((a, b) => {
+    const r = typeof a[key] === "number" ? a[key] - b[key] : collator.compare(a[key], b[key]);
+    return (desc ? -r : r) || collator.compare(a.name, b.name);
+  });
+  $("#c-body").replaceChildren(...rows.map(g => {
+    const tr = el("tr");
+    tr.title = "Voir les offres de " + g.name;
+    cols.forEach(c => {
+      const v = c.key === "last" ? relativeDate(g.last) : g[c.key];
+      const td = el("td", [c.num ? "num" : "", c.num && !v ? "zero" : "", c.wrap ? "wrap" : ""].join(" ").trim(), c.num && !v ? "0" : v);
+      if (c.key === "name") td.style.fontWeight = "600";
+      tr.append(td);
+    });
+    tr.onclick = () => { $("#f-company").value = g.name; location.hash = "#kanban"; };
+    return tr;
+  }));
+}
+
+/* ---------- multi-sélection ---------- */
+function togglePick(id) {
+  picked.has(id) ? picked.delete(id) : picked.add(id);
+  lastPicked = id;
+  render();
+}
+
+// Maj+clic : sélectionne toutes les cartes entre la dernière cliquée et celle-ci, dans la même colonne
+function pickRange(j) {
+  const last = JOBS.find(x => x.id === lastPicked);
+  if (!last || last.status !== j.status) return togglePick(j.id);
+  const col = JOBS.filter(x => x.status === j.status && matches(x)).sort(SORTS[$("#sort").value]);
+  const [a, b] = [col.indexOf(last), col.indexOf(j)].sort((x, y) => x - y);
+  col.slice(a, b + 1).forEach(x => picked.add(x.id));
+  lastPicked = j.id;
+  render();
+}
+
+function clearPicked() { picked.clear(); lastPicked = null; render(); }
+
+function renderBulkbar() {
+  const n = picked.size;
+  document.body.classList.toggle("picking", n > 0);
+  $("#bulkbar").classList.toggle("hidden", !n);
+  if (!n) return;
+  $("#bulk-count").textContent = `${n} sélectionnée${n > 1 ? "s" : ""}`;
+  $("#bulk-statuses").replaceChildren(...STATUSES.map(s => {
+    const b = el("button");
+    const dot = el("span", "dot"); dot.style.background = STATUS_COLORS[s.key];
+    b.append(dot, s.label);
+    b.onclick = () => bulkStatus([...picked], s.key);
+    return b;
+  }));
+}
+
+async function bulkStatus(ids, status) {
+  const label = STATUSES.find(s => s.key === status).label;
+  const prev = new Map(ids.map(id => [id, JOBS.find(j => j.id === id)?.status]));
+  JOBS.forEach(j => { if (prev.has(j.id)) j.status = status; });
+  picked.clear(); render();
+  if (current && prev.has(current.id)) renderStatusPicker();
+  try {
+    await api("/api/jobs/bulk-status", { method: "POST", body: JSON.stringify({ ids, status }) });
+    toast(`${ids.length} offre${ids.length > 1 ? "s" : ""} déplacée${ids.length > 1 ? "s" : ""} dans « ${label} »`);
+  } catch {
+    JOBS.forEach(j => { if (prev.has(j.id)) j.status = prev.get(j.id); });
+    render(); toast("Échec du déplacement");
+  }
+}
+
+async function bulkDelete() {
+  const ids = [...picked];
+  if (!ids.length || !confirm(`Supprimer définitivement ${ids.length} offre${ids.length > 1 ? "s" : ""} ?`)) return;
+  try {
+    await api("/api/jobs/bulk-delete", { method: "POST", body: JSON.stringify({ ids }) });
+  } catch { return toast("Échec de la suppression"); }
+  const gone = new Set(ids);
+  JOBS = JOBS.filter(j => !gone.has(j.id));
+  if (current && gone.has(current.id)) closeDetail();
+  picked.clear();
+  renderSideLists(); render();
+  toast(`${ids.length} offre${ids.length > 1 ? "s" : ""} supprimée${ids.length > 1 ? "s" : ""}`);
+}
+$("#bulk-delete").onclick = bulkDelete;
+$("#bulk-clear").onclick = clearPicked;
+
+/* ---------- actions sur une offre ---------- */
+async function patch(j, body) {
+  Object.assign(j, await api(`/api/jobs/${j.id}`, { method: "PATCH", body: JSON.stringify(body) }));
+  return j;
+}
+
+async function setStatus(id, status) {
+  const j = JOBS.find(x => x.id === id);
+  if (!j || j.status === status) return render();
+  const prev = j.status;
+  j.status = status; render();
+  if (current === j) renderStatusPicker();
+  try { await patch(j, { status }); toast(`Déplacée dans « ${STATUSES.find(s => s.key === status).label} »`); }
+  catch { j.status = prev; render(); toast("Échec de la mise à jour"); }
+}
+
+const dTags = chipEditor($("#d-tags"), { placeholder: "Ajouter un tag…", list: "dl-tags",
+  onChange: async v => { await patch(current, { tags: v }); renderSideLists(); render(); } });
+const dSkills = chipEditor($("#d-skills"), { placeholder: "Ajouter une compétence…", list: "dl-skills",
+  onChange: async v => { await patch(current, { skills: v }); renderSideLists(); render(); } });
+
+function renderStatusPicker() {
+  $("#d-status").replaceChildren(...STATUSES.map(s => {
+    const b = el("button", current.status === s.key ? "on" : "");
+    const dot = el("span", "dot"); dot.style.background = STATUS_COLORS[s.key];
+    b.append(dot, s.label);
+    b.onclick = () => setStatus(current.id, s.key);
+    return b;
+  }));
+}
+
+function openDetail(j) {
+  flushNotes();
+  closeSearchDrawer();
+  current = j;
+  $("#d-title").textContent = j.title;
+  $("#d-sub").textContent = [j.company, j.city || j.location].filter(Boolean).join(" · ");
+  $("#d-link").href = j.link;
+  renderStatusPicker();
+  const info = [
+    ["Lieu", [j.location, j.country].filter(Boolean).join(", ")],
+    ["Contrat", j.contract],
+    ["Publiée", j.date_posted ? new Date(j.date_posted.slice(0, 10)).toLocaleDateString("fr-FR", { dateStyle: "long" }) : ""],
+    ["Site", (j.source || "").split(" ")[0]],
+    ["Catégories", j.categories.join(", ")],
+    ["Trouvée à", j.zones.join(", ")],
+  ].filter(([, v]) => v);
+  $("#d-info").replaceChildren(...info.flatMap(([k, v]) => [el("dt", null, k), el("dd", null, v)]));
+  $("#d-notes").value = j.notes || "";
+  $("#notes-saved").classList.add("hidden");
+  dTags.set(j.tags);
+  dSkills.set(j.skills);
+  $("#d-desc").textContent = j.description || "Pas de description récupérée.";
+  $(".drawer-body").scrollTop = 0;
+  $("#drawer").classList.add("open");
+  $("#drawer").setAttribute("aria-hidden", "false");
+  document.querySelectorAll(".card.selected").forEach(c => c.classList.remove("selected"));
+  document.querySelector(`.card[data-id="${j.id}"]`)?.classList.add("selected");
+}
+
+function closeDetail() {
+  flushNotes();
+  current = null;
+  $("#drawer").classList.remove("open");
+  $("#drawer").setAttribute("aria-hidden", "true");
+  document.querySelectorAll(".card.selected").forEach(c => c.classList.remove("selected"));
+}
+
+// notes : enregistrement automatique pendant la frappe
+let notesTimer = null;
+async function saveNotes() {
+  clearTimeout(notesTimer); notesTimer = null;
+  if (!current || $("#d-notes").value === (current.notes || "")) return;
+  await patch(current, { notes: $("#d-notes").value });
+  $("#notes-saved").classList.remove("hidden");
+}
+function flushNotes() { if (notesTimer) saveNotes(); }
+$("#d-notes").addEventListener("input", () => { $("#notes-saved").classList.add("hidden"); clearTimeout(notesTimer); notesTimer = setTimeout(saveNotes, 700); });
+$("#d-notes").addEventListener("blur", flushNotes);
+
+$("#d-close").onclick = closeDetail;
+$("#d-delete").onclick = async () => {
+  if (!confirm("Supprimer cette offre ?")) return;
+  const j = current;
+  await api(`/api/jobs/${j.id}`, { method: "DELETE" });
+  JOBS = JOBS.filter(x => x !== j);
+  closeDetail(); renderSideLists(); render(); toast("Offre supprimée");
+};
+
+/* ---------- paramètres ---------- */
+let dirty = false;
+const markDirty = () => { dirty = true; $("#savebar").classList.remove("hidden"); };
+const cfgLocations = chipEditor($("#cfg-locations"), { placeholder: "ex : Toulouse, Occitanie, Île-de-France", list: "dl-zones", onChange: markDirty });
+const cfgSearches = chipEditor($("#cfg-searches"), { placeholder: "ex : stage développeur rust", list: "dl-tags", onChange: markDirty });
+const cfgSearchTags = chipEditor($("#cfg-search-tags"), { placeholder: "ex : Cybersécurité, DevOps / Cloud", list: "dl-cats", onChange: markDirty });
+const cfgSearchSkills = chipEditor($("#cfg-search-skills"), { placeholder: "ex : Python, Docker", list: "dl-skills", onChange: markDirty });
+const cfgSkills = chipEditor($("#cfg-skills"), { placeholder: "ex : Svelte", list: "dl-skills", onChange: markDirty });
+let catEditors = [];
+
+function addCategoryRow(name = "", keywords = []) {
+  const row = el("div", "cat-row");
+  const nameInput = el("input");
+  nameInput.placeholder = "Nom de la catégorie";
+  nameInput.value = name;
+  nameInput.addEventListener("input", markDirty);
+  const box = el("div", "chip-editor");
+  const editor = chipEditor(box, { placeholder: "mot-clé…", onChange: markDirty });
+  editor.set(keywords);
+  const del = el("button", "btn-ghost", "×");
+  del.title = "Supprimer la catégorie";
+  const entry = { nameInput, editor };
+  del.onclick = () => { row.remove(); catEditors = catEditors.filter(e => e !== entry); markDirty(); };
+  row.append(nameInput, box, del);
+  $("#cfg-cats").append(row);
+  catEditors.push(entry);
+  return nameInput;
+}
+$("#add-cat").onclick = () => { addCategoryRow().focus(); markDirty(); };
+
+async function loadConfig() {
+  const { config: c, available_sites } = await api("/api/config");
+  cfgLocations.set(c.locations);
+  cfgSearches.set(c.searches);
+  cfgSearchTags.set(c.search_tags);
+  cfgSearchSkills.set(c.search_skills);
+  $("#cfg-contract").value = c.contract;
+  cfgSkills.set(c.skills);
+  $("#cfg-country").value = c.country;
+  $("#cfg-radius").value = c.radius_km;
+  $("#cfg-limit").value = c.results_per_search;
+  $("#cfg-age").value = c.max_age_days;
+  $("#cfg-parallel").value = c.parallel_searches;
+  $("#cfg-per-site").value = c.per_site;
+  $("#cfg-serpapi").value = c.serpapi_key;
+  $("#cfg-cats").replaceChildren(); catEditors = [];
+  Object.entries(c.categories).forEach(([name, kws]) => addCategoryRow(name, kws));
+  $("#cfg-sites").replaceChildren(el("span", "muted small", "Sites :"), ...available_sites.map(s => {
+    const l = el("label"), cb = el("input");
+    cb.type = "checkbox"; cb.value = s; cb.checked = c.sites.includes(s); cb.onchange = markDirty;
+    l.append(cb, s);
+    return l;
+  }));
+  dirty = false;
+  $("#savebar").classList.add("hidden");
+}
+["#cfg-contract", "#cfg-country", "#cfg-radius", "#cfg-limit", "#cfg-age", "#cfg-parallel", "#cfg-per-site", "#cfg-serpapi"].forEach(s => $(s).addEventListener("input", markDirty));
+
+$("#save-config").onclick = async () => {
+  const body = {
+    locations: cfgLocations.get(), searches: cfgSearches.get(), skills: cfgSkills.get(),
+    search_tags: cfgSearchTags.get(), search_skills: cfgSearchSkills.get(), contract: $("#cfg-contract").value.trim(),
+    categories: Object.fromEntries(catEditors.map(e => [e.nameInput.value.trim(), e.editor.get()]).filter(([n]) => n)),
+    country: $("#cfg-country").value.trim() || "France",
+    radius_km: +$("#cfg-radius").value || 30,
+    results_per_search: +$("#cfg-limit").value || 25,
+    max_age_days: +$("#cfg-age").value || 30,
+    parallel_searches: +$("#cfg-parallel").value || 6,
+    per_site: +$("#cfg-per-site").value || 2,
+    serpapi_key: $("#cfg-serpapi").value,
+    sites: [...document.querySelectorAll("#cfg-sites input:checked")].map(cb => cb.value),
+  };
+  try {
+    await api("/api/config", { method: "PUT", body: JSON.stringify(body) });
+    await loadConfig(); await load();
+    toast("Paramètres enregistrés");
+  } catch (e) { toast("Erreur : " + e.message); }
+};
+$("#cancel-config").onclick = loadConfig;
+$("#redetect").onclick = async () => {
+  if (dirty && !confirm("Les modifications non enregistrées ne seront pas prises en compte. Continuer ?")) return;
+  $("#redetect-status").textContent = "En cours…";
+  const r = await api("/api/redetect-skills", { method: "POST" });
+  $("#redetect-status").textContent = `${r.updated} offre(s) mise(s) à jour`;
+  load();
+};
+
+/* ---------- recherche d'offres (en arrière-plan) ---------- */
+const SITE_NAMES = { linkedin: "LinkedIn", hellowork: "HelloWork", indeed: "Indeed", google: "Google" };
+let poll = null, lastNew = 0;
+
+function refreshJobs() {
+  if (dragging) { refreshPending = true; return; }  // ne pas casser un glisser-déposer en cours
+  load({ markFresh: true });
+}
+
+function showScrapeStatus(s) {
+  const box = $("#scrape-status");
+  box.classList.toggle("hidden", !s.started);
+  box.classList.toggle("done", !s.running);
+  $("#ss-spinner").classList.toggle("hidden", !s.running);
+  $("#ss-stop").classList.toggle("hidden", !s.running);
+  $("#ss-dismiss").classList.toggle("hidden", s.running);
+  $("#btn-scrape").disabled = s.running;
+  $("#ss-new").textContent = `+${s.new_jobs} nouvelle${s.new_jobs > 1 ? "s" : ""}`;
+  $("#ss-new").classList.toggle("hidden", !s.new_jobs);
+  const txt = $("#ss-text");
+  if (s.running && s.step) {
+    txt.replaceChildren(el("b", null, SITE_NAMES[s.step.site] || s.step.site),
+      document.createTextNode(` · « ${s.step.query} » à ${s.step.location} · ${s.step.index}/${s.step.total} terminées`));
+  } else if (s.running) {
+    txt.textContent = "Démarrage de la recherche…";
+  } else {
+    txt.textContent = s.stopped ? "Recherche arrêtée" : "✓ Recherche terminée";
+  }
+  const pct = s.step ? ((s.running ? s.step.index : s.step.total) / s.step.total) * 100 : 0;  // index = recherches terminées
+  $("#progress").classList.toggle("hidden", !s.running);
+  $("#progress-bar").style.width = Math.max(3, pct) + "%";
+  $("#log").textContent = s.log.join("\n");
+  $("#log").scrollTop = 1e9;
+}
+
+async function pollScrape() {
+  let s;
+  try { s = await api("/api/scrape"); } catch { return; }
+  showScrapeStatus(s);
+  if (s.new_jobs !== lastNew) { lastNew = s.new_jobs; refreshJobs(); }
+  if (s.running && !poll) poll = setInterval(pollScrape, 2000);
+  if (!s.running && poll) {
+    clearInterval(poll); poll = null;
+    refreshJobs();
+    toast(s.stopped ? `Recherche arrêtée · ${s.new_jobs} nouvelle(s) offre(s)` : `Recherche terminée · ${s.new_jobs} nouvelle(s) offre(s)`);
+  }
+}
+
+/* panneau "Chercher des offres" */
+const CONTRACTS = ["stage", "alternance", "CDD", "CDI", "freelance", ""];
+let sdContract = "stage", sdConfig = null, planTimer = null;
+const planSoon = () => { clearTimeout(planTimer); planTimer = setTimeout(updatePlan, 250); };
+const sdSearches = chipEditor($("#sd-searches"), { placeholder: "ex : stage développeur python", list: "dl-tags", onChange: planSoon });
+const sdTags = chipEditor($("#sd-tags"), { placeholder: "Ajouter un tag…", list: "dl-cats", onChange: () => { renderSuggestions(); planSoon(); } });
+const sdSkills = chipEditor($("#sd-skills"), { placeholder: "Ajouter une compétence…", list: "dl-skills", onChange: () => { renderSuggestions(); planSoon(); } });
+const sdLocations = chipEditor($("#sd-locations"), { placeholder: "ex : Toulouse", list: "dl-zones", onChange: () => { renderSuggestions(); planSoon(); } });
+
+// boutons de suggestion : un clic ajoute (ou retire) la valeur dans l'éditeur
+function suggestPills(target, values, editor, limit = Infinity) {
+  const chosen = new Set(editor.get().map(v => v.toLowerCase()));
+  const shown = values.filter((v, i, a) => a.findIndex(x => x.toLowerCase() === v.toLowerCase()) === i).slice(0, limit);
+  $(target).replaceChildren(...shown.map(v => {
+    const b = el("button", "pill" + (chosen.has(v.toLowerCase()) ? " on" : ""), v);
+    b.type = "button";
+    b.onclick = () => {
+      const cur = editor.get();
+      editor.set(chosen.has(v.toLowerCase()) ? cur.filter(x => x.toLowerCase() !== v.toLowerCase()) : [...cur, v]);
+      renderSuggestions(); planSoon();
+    };
+    return b;
+  }));
+}
+
+function renderSuggestions() {
+  if (!sdConfig) return;
+  // tags : catégories automatiques d'abord, puis les tags déjà utilisés
+  suggestPills("#sd-tags-suggest", [...Object.keys(sdConfig.categories), ...sdConfig.search_tags], sdTags);
+  // compétences : les plus fréquentes dans tes offres d'abord, puis le reste de la liste
+  const counts = countBy(j => j.skills);
+  const q = $("#sd-skill-filter").value.trim().toLowerCase();
+  const skillList = [...sdConfig.skills].sort((a, b) => (counts.get(b) || 0) - (counts.get(a) || 0) || collator.compare(a, b))
+    .filter(s => !q || s.toLowerCase().includes(q));
+  suggestPills("#sd-skills-suggest", skillList, sdSkills, q ? Infinity : 20);
+  const zoneCounts = countBy(j => j.city);
+  const zones = [...sdConfig.locations, ...countBy(j => j.zones).keys(),
+    ...[...zoneCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([c]) => c)];
+  suggestPills("#sd-locations-suggest", zones, sdLocations, 14);
+}
+
+function renderContracts() {
+  $("#sd-contracts").replaceChildren(...CONTRACTS.map(c => {
+    const b = el("button", "pill" + (sdContract.toLowerCase() === c.toLowerCase() ? " on" : ""), c ? c[0].toUpperCase() + c.slice(1) : "Aucun");
+    b.type = "button";
+    b.onclick = () => { sdContract = c; renderContracts(); planSoon(); };
+    return b;
+  }));
+}
+
+function searchRequest() {
+  return {
+    searches: sdSearches.get(), search_tags: sdTags.get(), search_skills: sdSkills.get(),
+    locations: sdLocations.get(), contract: sdContract,
+    sites: [...document.querySelectorAll("#sd-sites input:checked")].map(cb => cb.value),
+  };
+}
+
+async function updatePlan() {
+  const req = searchRequest();
+  const box = $("#sd-plan");
+  if (!req.sites.length) { box.textContent = "Choisis au moins un site."; $("#sd-start").disabled = true; return; }
+  const plan = await api("/api/scrape/plan", { method: "POST", body: JSON.stringify(req) });
+  const running = $("#btn-scrape").disabled;
+  $("#sd-start").disabled = !plan.queries.length || running;
+  $("#sd-start").textContent = running ? "Une recherche tourne déjà" : `Lancer ${plan.steps} recherche${plan.steps > 1 ? "s" : ""}`;
+  if (!plan.queries.length) { box.textContent = "Ajoute au moins une recherche, un tag ou une compétence."; return; }
+  const total = el("div", "total", `${plan.queries.length} requête${plan.queries.length > 1 ? "s" : ""} × ${plan.locations} zone${plan.locations > 1 ? "s" : ""} × ${plan.sites} site${plan.sites > 1 ? "s" : ""} = ${plan.steps} recherche${plan.steps > 1 ? "s" : ""}`);
+  const list = el("div", "queries");
+  list.append(...plan.queries.map(q => { const t = el("span", "tag", q.query); t.title = "tag : " + q.tag; return t; }));
+  box.replaceChildren(total, list);
+  if (plan.steps > 40) box.append(el("div", "warn", `C'est beaucoup : compte environ ${Math.round(plan.steps * 0.4)} min. Tu peux continuer à utiliser le tableau pendant ce temps.`));
+}
+
+async function openSearchDrawer() {
+  closeDetail();
+  const { config: c, available_sites } = await api("/api/config");
+  sdConfig = c;
+  sdSearches.set(c.searches); sdTags.set(c.search_tags); sdSkills.set(c.search_skills); sdLocations.set(c.locations);
+  sdContract = c.contract;
+  $("#sd-skill-filter").value = "";
+  renderContracts();
+  $("#sd-sites").replaceChildren(...available_sites.map(site => {
+    const l = el("label"), cb = el("input");
+    cb.type = "checkbox"; cb.value = site; cb.checked = c.sites.includes(site); cb.onchange = planSoon;
+    l.append(cb, SITE_NAMES[site] || site);
+    if (site === "google" && !c.serpapi_key) l.title = "Ignoré sans clé SerpAPI (voir Paramètres)";
+    return l;
+  }));
+  renderSuggestions();
+  await updatePlan();
+  $("#search-drawer .drawer-body").scrollTop = 0;
+  $("#search-drawer").classList.add("open");
+  $("#search-drawer").setAttribute("aria-hidden", "false");
+}
+function closeSearchDrawer() {
+  $("#search-drawer").classList.remove("open");
+  $("#search-drawer").setAttribute("aria-hidden", "true");
+}
+const searchDrawerOpen = () => $("#search-drawer").classList.contains("open");
+
+$("#btn-scrape").onclick = openSearchDrawer;
+$("#sd-close").onclick = closeSearchDrawer;
+$("#sd-cancel").onclick = closeSearchDrawer;
+$("#sd-skill-filter").addEventListener("input", renderSuggestions);
+$("#sd-start").onclick = async () => {
+  const body = { ...searchRequest(), remember: $("#sd-remember").checked };
+  try {
+    await api("/api/scrape", { method: "POST", body: JSON.stringify(body) });
+  } catch (e) { toast("Impossible de lancer : " + e.message); return; }
+  closeSearchDrawer();
+  lastNew = 0;
+  toast("Recherche lancée en arrière-plan");
+  pollScrape();
+};
+$("#ss-stop").onclick = async () => { await api("/api/scrape/stop", { method: "POST" }); pollScrape(); };
+$("#ss-dismiss").onclick = () => { $("#scrape-status").classList.add("hidden"); $("#log-panel").classList.add("hidden"); };
+$("#ss-text").onclick = () => $("#log-panel").classList.toggle("hidden");
+$("#log-close").onclick = () => $("#log-panel").classList.add("hidden");
+
+/* ---------- événements ---------- */
+$("#f-country").addEventListener("input", () => { fillCities(); render(); });
+["#q", "#f-city", "#f-company", "#f-source", "#sort"].forEach(s => $(s).addEventListener("input", render));
+$("#skill-search").addEventListener("input", renderSideLists);
+$("#no-results-reset").onclick = resetFilters;
+$("#toggle-filters").onclick = () => {
+  store.set("filters", store.get("filters") === "open" ? "closed" : "open");
+  render();
+};
+window.addEventListener("hashchange", () => {
+  if (currentView() === "parametres") { closeDetail(); loadConfig(); }
+  render();
+});
+document.addEventListener("keydown", e => {
+  const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName);
+  if (e.key === "Escape" && searchDrawerOpen()) { closeSearchDrawer(); return; }
+  if (e.key === "Escape" && picked.size) { clearPicked(); return; }
+  if ((e.key === "Delete" || e.key === "Backspace") && picked.size && !typing) { e.preventDefault(); bulkDelete(); return; }
+  if (e.key === "Escape" && $("#drawer").classList.contains("open")) closeDetail();
+  if (e.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) { e.preventDefault(); $("#q").focus(); }
+});
+
+$("#sort").value = "date";  // toujours les plus récentes en premier à l'ouverture
+if (store.get("filters") === null) store.set("filters", innerWidth > 860 ? "open" : "closed");
+load().then(async () => {
+  const s = await api("/api/scrape");
+  if (s.running) { lastNew = s.new_jobs; pollScrape(); }
+});
+if (currentView() === "parametres") loadConfig();
+</script>
+</body>
+</html>
