@@ -252,6 +252,7 @@
     <a href="#kanban" data-view="kanban">Tableau</a>
     <a href="#entreprises" data-view="entreprises">Entreprises</a>
     <a href="#parametres" data-view="parametres">Paramètres</a>
+    <a href="/cv">CV</a>
   </nav>
   <div class="search"><input id="q" type="search" placeholder="Rechercher un poste, une entreprise, une compétence…  ( / )"></div>
   <div class="scrape-status hidden" id="scrape-status">
@@ -405,6 +406,7 @@
   <div class="drawer-body">
     <div style="display:flex; gap:8px">
       <a class="btn-primary" id="d-link" target="_blank" rel="noopener" style="padding:8px 14px; border-radius:8px; color:#fff; font-weight:500">Ouvrir l'offre ↗</a>
+      <a id="d-cv" style="padding:8px 14px; border-radius:8px; border:1px solid var(--line-strong); color:var(--text); font-weight:500" title="Comparer ton CV aux compétences de cette offre">Adapter mon CV</a>
       <span class="spacer"></span>
       <button class="btn-danger" id="d-delete">Supprimer</button>
     </div>
@@ -956,6 +958,7 @@ function openDetail(j) {
   $("#d-title").textContent = j.title;
   $("#d-sub").textContent = [j.company, j.city || j.location].filter(Boolean).join(" · ");
   $("#d-link").href = j.link;
+  $("#d-cv").href = `/cv?job=${j.id}`;
   renderStatusPicker();
   const info = [
     ["Lieu", [j.location, j.country].filter(Boolean).join(", ")],

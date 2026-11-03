@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Éditeur de CV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff; --soft: #f6f7f9; --hover: #eef0f3; --line: #e5e7eb; --line-strong: #d1d5db;
+    --text: #111827; --muted: #6b7280; --faint: #9ca3af;
+    --accent: #2563eb; --accent-soft: #eff6ff; --accent-text: #1d4ed8;
+    --danger: #dc2626; --ok: #16a34a; --ok-soft: #f0fdf4; --warn: #b45309; --warn-soft: #fffbeb;
+    --radius: 10px; --shadow: 0 1px 2px rgba(16,24,40,.06); --shadow-lg: 0 12px 32px rgba(16,24,40,.14);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; font: 14px/1.45 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
+  input, select, textarea, button { font: inherit; color: inherit; }
+  input, select, textarea { background: #fff; border: 1px solid var(--line-strong); border-radius: 8px; padding: 7px 10px; outline: none; transition: border-color .15s, box-shadow .15s; min-width: 0; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  textarea { resize: vertical; min-height: 70px; width: 100%; line-height: 1.5; }
+  button { cursor: pointer; border: 1px solid var(--line-strong); background: #fff; border-radius: 8px; padding: 7px 12px; font-weight: 500; transition: background .15s, border-color .15s; white-space: nowrap; }
+  button:hover { background: var(--soft); }
+  button:disabled { opacity: .5; cursor: default; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-text); }
+  .btn-ghost { border-color: transparent; background: transparent; color: var(--muted); }
+  .btn-ghost:hover { background: var(--hover); color: var(--text); }
+  .btn-danger { color: var(--danger); border-color: transparent; background: transparent; }
+  .btn-danger:hover { background: #fef2f2; }
+  .icon { padding: 3px 8px; font-size: 13px; }
+  a { color: var(--accent); text-decoration: none; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .hidden { display: none !important; }
+  .spacer { flex: 1; }
+
+  header { display: flex; align-items: center; gap: 16px; padding: 0 20px; height: 60px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+  .logo { font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 8px; white-space: nowrap; color: var(--text); }
+  .logo span { width: 26px; height: 26px; border-radius: 7px; background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 14px; }
+  .tabs { display: flex; gap: 2px; background: var(--soft); padding: 3px; border-radius: 9px; }
+  .tabs a { color: var(--muted); padding: 5px 12px; border-radius: 7px; font-weight: 500; white-space: nowrap; }
+  .tabs a:hover { color: var(--text); }
+  .tabs a.active { background: #fff; color: var(--text); box-shadow: var(--shadow); }
+
+  .layout { flex: 1; display: grid; grid-template-columns: minmax(380px, 560px) 1fr; min-height: 0; }
+  .editor { overflow-y: auto; border-right: 1px solid var(--line); padding: 16px 20px 80px; display: flex; flex-direction: column; gap: 14px; }
+  .preview { background: #e9ebef; display: flex; flex-direction: column; min-height: 0; }
+  .preview-bar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: #fff; flex-wrap: wrap; }
+  .preview iframe { flex: 1; border: none; width: 100%; background: #e9ebef; }
+  .seg { display: inline-flex; background: var(--soft); padding: 3px; border-radius: 9px; gap: 2px; }
+  .seg button { border: none; background: transparent; padding: 4px 10px; font-size: 13px; color: var(--muted); border-radius: 7px; }
+  .seg button.on { background: #fff; color: var(--text); box-shadow: var(--shadow); }
+  .swatches { display: inline-flex; gap: 5px; align-items: center; }
+  .swatch { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line-strong); padding: 0; }
+  .swatch.on { box-shadow: 0 0 0 2px var(--text); }
+  .swatch-custom { position: relative; overflow: hidden; background: conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ef4444); }
+  .swatch-custom input { position: absolute; inset: -6px; opacity: 0; cursor: pointer; width: 40px; height: 40px; }
+  .page-count { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--ok-soft); color: #15803d; }
+  .page-count:empty { display: none; }
+  .page-count.warn { background: var(--warn-soft); color: var(--warn); }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+  .presets button { font-size: 12.5px; padding: 5px 10px; }
+  .presets button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
+  .preset-hint { font-size: 12px; color: var(--muted); }
+  .preview-state { font-size: 12px; color: var(--muted); }
+
+  .cvbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .cvbar select { flex: 1; min-width: 160px; font-weight: 600; }
+  .save-state { font-size: 12px; color: var(--faint); min-width: 90px; text-align: right; }
+  .save-state.ok { color: var(--ok); }
+
+  .card { border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .card > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 12px 14px; font-weight: 600; user-select: none; }
+  .card > summary::-webkit-details-marker { display: none; }
+  .card > summary::before { content: "›"; color: var(--faint); font-size: 18px; line-height: 1; transition: transform .15s; width: 10px; }
+  .card[open] > summary::before { transform: rotate(90deg); }
+  .card > summary .n { color: var(--faint); font-weight: 500; font-size: 12px; }
+  .card-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .hint { color: var(--muted); font-size: 12px; margin: -4px 0 0; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid .full { grid-column: 1 / -1; }
+  .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 500; color: var(--muted); }
+  .field input, .field select, .field textarea { color: var(--text); font-weight: 400; font-size: 13.5px; }
+  .check { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); font-weight: 400; }
+  .check input { accent-color: var(--accent); margin: 0; }
+
+  .entry { border: 1px solid var(--line); border-radius: 10px; background: var(--soft); }
+  .entry > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 8px 8px 8px 12px; font-size: 13px; }
+  .entry > summary::-webkit-details-marker { display: none; }
+  .entry > summary .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .entry > summary .t .sub { font-weight: 400; color: var(--muted); }
+  .entry .entry-body { padding: 4px 12px 12px; }
+  .entry input, .entry textarea, .entry select { background: #fff; }
+  .add { align-self: flex-start; }
+
+  .chip-editor { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border: 1px solid var(--line-strong); border-radius: 8px; padding: 5px; min-height: 38px; background: #fff; cursor: text; }
+  .chip-editor:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .chip-editor input { border: none; flex: 1; min-width: 120px; padding: 3px 4px; box-shadow: none !important; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 2px 4px 2px 8px; font-size: 12.5px; color: var(--text); }
+  .chip button { border: none; background: none; padding: 0 4px; color: var(--faint); font-size: 15px; line-height: 1; }
+  .chip button:hover { color: var(--danger); background: none; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row > .grow { flex: 1; min-width: 0; }
+
+  .photo-box { display: flex; gap: 14px; align-items: center; }
+  .photo { width: 84px; height: 84px; border-radius: 50%; background: var(--soft) center/cover no-repeat; border: 1px dashed var(--line-strong); display: grid; place-items: center; color: var(--faint); font-size: 12px; text-align: center; flex-shrink: 0; cursor: pointer; }
+  .photo.has { border-style: solid; color: transparent; }
+
+  .order-list { display: flex; flex-direction: column; gap: 4px; }
+  .order-item { display: flex; align-items: center; gap: 6px; padding: 4px 4px 4px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+  .order-item span { flex: 1; }
+
+  .match { border: 1px solid #bfdbfe; background: var(--accent-soft); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .match .head { display: flex; gap: 8px; align-items: center; }
+  .match .head b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pills { display: flex; flex-wrap: wrap; gap: 5px; }
+  .pill { border-radius: 999px; padding: 2px 10px; font-size: 12px; border: 1px solid var(--line); background: #fff; font-weight: 500; }
+  .pill.ok { background: var(--ok-soft); border-color: #bbf7d0; color: #15803d; }
+  .pill.miss { border-style: dashed; color: var(--muted); }
+  .pill.miss::before { content: "+ "; color: var(--faint); }
+  .pill.miss:hover { border-color: var(--accent); color: var(--accent-text); }
+  .score { font-weight: 700; font-size: 13px; }
+
+  dialog { border: none; border-radius: 14px; padding: 0; width: min(760px, 94vw); max-height: 88vh; box-shadow: var(--shadow-lg); }
+  dialog::backdrop { background: rgba(17,24,39,.35); }
+  .modal { padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; max-height: 88vh; }
+  .modal h2 { margin: 0; font-size: 18px; }
+  .modal pre { margin: 0; white-space: pre-wrap; font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--soft); border-radius: 8px; padding: 12px 14px; overflow-y: auto; flex: 1; min-height: 120px; }
+  .checklist { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+  .checklist div { padding: 6px 10px; border-radius: 8px; }
+  .checklist .ok { background: var(--ok-soft); color: #166534; }
+  .checklist .warn { background: var(--warn-soft); color: var(--warn); }
+  .checklist .info { background: var(--soft); color: var(--muted); }
+
+  .drop-hint { position: fixed; inset: 0; z-index: 60; background: rgba(37,99,235,.12); display: grid; place-items: center; pointer-events: none; }
+  .drop-hint div { background: #fff; border: 2px dashed var(--accent); border-radius: 14px; padding: 28px 36px; font-weight: 600; color: var(--accent-text); box-shadow: var(--shadow-lg); }
+  .import-note { border: 1px solid #fde68a; background: var(--warn-soft); color: var(--warn); border-radius: 12px; padding: 10px 14px; font-size: 13px; display: flex; gap: 10px; align-items: flex-start; }
+  .import-note button { padding: 0 6px; color: var(--warn); }
+  .toast { position: fixed; bottom: 20px; left: 20px; background: var(--text); color: #fff; padding: 10px 16px; border-radius: 10px; box-shadow: var(--shadow-lg); z-index: 50; font-size: 13px; opacity: 0; transform: translateY(8px); transition: all .2s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: none; }
+
+  @media (max-width: 980px) {
+    header { gap: 10px; padding: 10px 12px; flex-wrap: wrap; height: auto; }
+    .logo b { display: none; }
+    .layout { grid-template-columns: 1fr; overflow-y: auto; display: block; }
+    .editor { border-right: none; padding: 14px 16px 30px; overflow: visible; }
+    .preview { height: 85vh; }
+  }
+  @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="/#kanban"><span>✓</span><b>Candidatures</b></a>
+  <nav class="tabs">
+    <a href="/#kanban">Tableau</a>
+    <a href="/#entreprises">Entreprises</a>
+    <a href="/#parametres">Paramètres</a>
+    <a href="/cv" class="active">CV</a>
+  </nav>
+</header>
+
+<div class="layout">
+  <div class="editor" id="editor">
+    <div class="cvbar">
+      <select id="cv-select" title="Choisir un CV"></select>
+      <button id="cv-new" title="Nouveau CV vide">Nouveau</button>
+      <button id="cv-dup" title="Copier ce CV (pour l'adapter à une offre)">Dupliquer</button>
+      <button id="cv-import" title="Créer un CV à partir d'un PDF existant (tu peux aussi glisser le PDF sur la page)">Importer un PDF</button>
+      <button class="btn-ghost icon" id="cv-rename" title="Renommer">Renommer</button>
+      <button class="btn-danger icon" id="cv-delete" title="Supprimer ce CV">Supprimer</button>
+      <span class="save-state" id="save-state"></span>
+    </div>
+
+    <div class="match" id="match">
+      <div class="head">
+        <span class="small muted" style="white-space:nowrap">Adapter à une offre</span>
+        <input id="job-input" class="grow" list="dl-jobs" placeholder="Choisir une offre du tableau…" style="flex:1">
+        <button class="btn-ghost icon hidden" id="job-clear" title="Ne plus comparer">×</button>
+      </div>
+      <div id="match-body" class="hidden" style="display:flex; flex-direction:column; gap:8px"></div>
+    </div>
+
+    <div class="import-note hidden" id="import-note"><span class="grow" id="import-note-text"></span><button class="btn-ghost" id="import-note-close" title="Masquer">×</button></div>
+
+    <div id="sections"></div>
+  </div>
+
+  <div class="preview">
+    <div class="preview-bar">
+      <b>Aperçu</b>
+      <span class="page-count" id="page-count"></span>
+      <span class="preview-state" id="preview-state"></span>
+      <span class="spacer"></span>
+      <div class="seg" id="style-seg" title="Style du CV">
+        <button data-style="moderne" title="Bandeau de couleur, titres avec barre, dates en pastille">Moderne</button><button data-style="tech" title="Inspiré des CV tech une page : sobre, centré, très lisible">Tech</button><button data-style="classique" title="Sobre, sans décor">Classique</button>
+      </div>
+      <div class="swatches" id="swatches" title="Couleur"></div>
+      <button id="ats-check" title="Voir le texte tel qu'un logiciel de recrutement le lit">Vérifier la lecture ATS</button>
+      <button class="btn-primary" id="export">Exporter en PDF</button>
+    </div>
+    <iframe id="preview" title="Aperçu du CV"></iframe>
+  </div>
+</div>
+
+<dialog id="ats-dialog">
+  <div class="modal">
+    <div class="row"><h2 class="grow">Lecture par un logiciel RH</h2><button class="btn-ghost" id="ats-close">×</button></div>
+    <div class="muted small">Texte extrait du PDF exporté, dans l'ordre où un ATS le lit. Si tout y est, lisible et dans le bon ordre, ton CV passe.</div>
+    <div class="checklist" id="ats-list"></div>
+    <pre id="ats-text"></pre>
+  </div>
+</dialog>
+
+<input type="file" id="photo-file" accept="image/*" class="hidden">
+<input type="file" id="pdf-file" accept="application/pdf,.pdf" class="hidden">
+<div class="drop-hint hidden" id="drop-hint"><div>Dépose ton CV en PDF pour l'importer</div></div>
+<datalist id="dl-jobs"></datalist>
+<datalist id="dl-levels">
+  <option value="Langue maternelle"><option value="Bilingue"><option value="Courant (C1)"><option value="Professionnel (B2)">
+  <option value="Intermédiaire (B1)"><option value="Notions (A2)"><option value="C2"><option value="C1"><option value="B2"><option value="B1">
+</datalist>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const api = (url, opts = {}) => fetch(url, { headers: { "Content-Type": "application/json" }, ...opts })
+  .then(async r => { if (!r.ok) throw new Error((await r.text()).replace(/<[^>]+>/g, " ").trim() || r.statusText); return r.status === 204 ? null : r.json(); });
+const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } },
+                set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+let toastTimer;
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+/* ---------- éditeur de chips (comme dans le tableau) ---------- */
+function chipEditor(container, { placeholder = "Ajouter…", list = null, onChange = () => {} } = {}) {
+  let values = [];
+  const input = el("input");
+  input.placeholder = placeholder;
+  if (list) input.setAttribute("list", list);
+  const add = raw => {
+    let changed = false;
+    raw.split(",").map(v => v.trim()).filter(Boolean).forEach(v => {
+      if (!values.some(x => x.toLowerCase() === v.toLowerCase())) { values.push(v); changed = true; }
+    });
+    input.value = ""; draw();
+    if (changed) onChange([...values]);
+    input.focus();
+  };
+  input.addEventListener("keydown", e => {
+    if ((e.key === "Enter" || e.key === ",") && input.value.trim()) { e.preventDefault(); add(input.value); }
+    else if (e.key === "Backspace" && !input.value && values.length) { values.pop(); draw(); onChange([...values]); }
+  });
+  input.addEventListener("blur", () => { if (input.value.trim()) add(input.value); });
+  function draw() {
+    container.replaceChildren(...values.map((v, i) => {
+      const c = el("span", "chip", v);
+      const x = el("button", null, "×");
+      x.type = "button"; x.title = "Retirer";
+      x.onclick = e => { e.stopPropagation(); values.splice(i, 1); draw(); onChange([...values]); };
+      c.append(x);
+      return c;
+    }), input);
+  }
+  container.classList.add("chip-editor");
+  container.addEventListener("click", e => { if (e.target === container) input.focus(); });
+  draw();
+  return { set: v => { values = [...(v || [])]; draw(); } };
+}
+
+/* ---------- état ---------- */
+const SECTION_LABELS = {
+  experience: "Expérience professionnelle", projects: "Projets", education: "Formation",
+  hard_skills: "Compétences techniques (hard skills)", soft_skills: "Compétences comportementales (soft skills)",
+  languages: "Langues", certifications: "Certifications", interests: "Centres d'intérêt",
+};
+let CV = null;          // { id, name, job_id, data }
+let JOBS = [];
+let matchedJob = null;
+
+/* ordres de sections tirés des modèles de CV informatiques les plus repris */
+const ORDER_PRESETS = [
+  { label: "Étudiant / stage", order: ["education", "experience", "projects", "hard_skills", "certifications", "languages", "soft_skills", "interests"],
+    why: "Formation d'abord : pour un stage ou une alternance, c'est ce que le recruteur regarde en premier. Puis expériences, projets, compétences." },
+  { label: "Junior tech", order: ["hard_skills", "experience", "projects", "education", "certifications", "languages", "soft_skills", "interests"],
+    why: "Compétences techniques en haut : les mots-clés (langages, outils) sautent aux yeux du recruteur et de l'ATS dès le premier coup d'œil." },
+  { label: "Expérimenté", order: ["experience", "projects", "hard_skills", "education", "certifications", "languages", "soft_skills", "interests"],
+    why: "Expérience d'abord : quand tu as déjà travaillé dans le métier, c'est ton meilleur argument ; la formation descend." },
+];
+
+/* champs des entrées de liste */
+const DATES = [
+  { key: "start", label: "Début", type: "month" },
+  { key: "end", label: "Fin", type: "month" },
+  { key: "current", label: "En cours", type: "check" },
+];
+const SCHEMAS = {
+  experience: {
+    add: "+ Ajouter une expérience", title: e => [e.title, e.company],
+    fields: [
+      { key: "title", label: "Intitulé du poste", ph: "Développeur full stack (alternance)" },
+      { key: "company", label: "Entreprise", ph: "Nom de l'entreprise" },
+      { key: "location", label: "Lieu", ph: "Bordeaux" }, ...DATES,
+      { key: "description", label: "Missions et résultats (une ligne = une puce, **gras** possible)", type: "textarea", full: true,
+        ph: "Mise en place d'une CI/CD GitLab pour 12 microservices\nRéduction du temps de déploiement de 40 %" },
+    ],
+  },
+  projects: {
+    add: "+ Ajouter un projet", title: p => [p.name, p.context],
+    fields: [
+      { key: "name", label: "Nom du projet", ph: "Homelab Kubernetes" },
+      { key: "context", label: "Contexte", ph: "Projet personnel, projet d'école…" },
+      { key: "tech", label: "Technologies", type: "chips", full: true, ph: "Docker, Terraform…" },
+      { key: "link", label: "Lien", ph: "github.com/moi/projet", full: true }, ...DATES,
+      { key: "description", label: "Description (une ligne = une puce)", type: "textarea", full: true },
+    ],
+  },
+  education: {
+    add: "+ Ajouter une formation", title: e => [e.degree, e.school],
+    fields: [
+      { key: "degree", label: "Diplôme", ph: "Master Informatique, BUT…" },
+      { key: "school", label: "Établissement", ph: "Université de Bordeaux" },
+      { key: "location", label: "Lieu", ph: "Bordeaux" }, ...DATES,
+      { key: "description", label: "Détails (spécialité, mention, cours clés — une ligne = une puce)", type: "textarea", full: true },
+    ],
+  },
+  certifications: {
+    add: "+ Ajouter une certification", title: c => [c.name, c.issuer],
+    fields: [
+      { key: "name", label: "Certification", ph: "AWS Cloud Practitioner" },
+      { key: "issuer", label: "Organisme", ph: "Amazon Web Services" },
+      { key: "date", label: "Date d'obtention", type: "month" },
+    ],
+  },
+};
+
+/* ---------- sauvegarde automatique + aperçu ---------- */
+let saveTimer = null, previewTimer = null, previewUrl = null, previewSeq = 0;
+function changed({ structure = false } = {}) {
+  $("#save-state").textContent = "modifié…"; $("#save-state").className = "save-state";
+  clearTimeout(saveTimer); saveTimer = setTimeout(save, 800);
+  clearTimeout(previewTimer); previewTimer = setTimeout(refreshPreview, 600);
+  if (structure) renderSections();
+  renderMatch();
+}
+async function save() {
+  clearTimeout(saveTimer); saveTimer = null;
+  if (!CV) return;
+  try {
+    await api(`/api/cvs/${CV.id}`, { method: "PUT", body: JSON.stringify({ data: CV.data }) });
+    $("#save-state").textContent = "enregistré ✓"; $("#save-state").className = "save-state ok";
+  } catch (e) { $("#save-state").textContent = "erreur d'enregistrement"; toast("Erreur : " + e.message); }
+}
+const flushSave = () => saveTimer ? save() : Promise.resolve();
+window.addEventListener("beforeunload", e => { if (saveTimer) { save(); e.preventDefault(); } });
+
+async function pdfBlob(download = false) {
+  const r = await fetch("/api/cv/pdf" + (download ? "?download=1" : ""), {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(CV.data) });
+  if (!r.ok) throw new Error(await r.text());
+  return { blob: await r.blob(), filename: r.headers.get("X-Filename") || "CV.pdf", pages: +r.headers.get("X-Pages") || 1 };
+}
+async function refreshPreview() {
+  const seq = ++previewSeq;
+  $("#preview-state").textContent = "mise à jour…";
+  try {
+    const { blob, pages } = await pdfBlob();
+    if (seq !== previewSeq) return;
+    const old = previewUrl;
+    previewUrl = URL.createObjectURL(blob);
+    $("#preview").src = previewUrl + "#toolbar=0&navpanes=0&view=FitH";
+    if (old) setTimeout(() => URL.revokeObjectURL(old), 2000);
+    $("#preview-state").textContent = "";
+    const pc = $("#page-count");
+    pc.textContent = pages > 1 ? `${pages} pages` : "1 page";
+    pc.className = "page-count" + (pages > 1 ? " warn" : "");
+    pc.title = pages > 1 ? "Pour un stage ou un premier poste, vise une seule page : raccourcis les puces, garde les expériences les plus pertinentes." : "Une page : parfait pour un stage ou un premier poste";
+  } catch (e) { $("#preview-state").textContent = "erreur d'aperçu"; }
+}
+
+/* ---------- construction des champs ---------- */
+function input(obj, f, { onInput } = {}) {
+  const wrap = el("label", "field" + (f.full ? " full" : ""));
+  if (f.type === "check") {
+    wrap.className = "check";
+    const cb = el("input"); cb.type = "checkbox"; cb.checked = !!obj[f.key];
+    cb.onchange = () => { obj[f.key] = cb.checked; onInput?.(); changed(); };
+    wrap.append(cb, f.label);
+    return wrap;
+  }
+  wrap.append(f.label);
+  if (f.type === "chips") {
+    const box = el("div");
+    const ed = chipEditor(box, { placeholder: f.ph || "Entrée pour ajouter", onChange: v => { obj[f.key] = v; changed(); } });
+    ed.set(Array.isArray(obj[f.key]) ? obj[f.key] : String(obj[f.key] || "").split(",").map(s => s.trim()).filter(Boolean));
+    wrap.append(box);
+    return wrap;
+  }
+  const i = f.type === "textarea" ? el("textarea") : el("input");
+  if (f.type === "month") { i.type = "month"; i.placeholder = "AAAA-MM"; }
+  if (f.type === "email") i.type = "email";
+  if (f.list) i.setAttribute("list", f.list);
+  if (f.ph) i.placeholder = f.ph;
+  if (f.rows) i.rows = f.rows;
+  i.value = obj[f.key] || "";
+  i.addEventListener("input", () => { obj[f.key] = i.value; onInput?.(); changed(); });
+  wrap.append(i);
+  return wrap;
+}
+
+function card(key, title, count, body, open) {
+  const d = el("details", "card");
+  d.dataset.key = key;
+  d.open = open ?? (store.get("cv-open-" + key) !== "0");
+  d.addEventListener("toggle", () => store.set("cv-open-" + key, d.open ? "1" : "0"));
+  const s = el("summary", null, title);
+  if (count != null) s.append(el("span", "n", count ? `(${count})` : ""));
+  d.append(s, body);
+  return d;
+}
+
+function move(list, i, delta) {
+  const j = i + delta;
+  if (j < 0 || j >= list.length) return;
+  [list[i], list[j]] = [list[j], list[i]];
+  changed({ structure: true });
+}
+
+function entryControls(list, i) {
+  const box = el("span", "row");
+  const up = el("button", "btn-ghost icon", "↑"); up.title = "Monter"; up.disabled = i === 0;
+  const down = el("button", "btn-ghost icon", "↓"); down.title = "Descendre"; down.disabled = i === list.length - 1;
+  const del = el("button", "btn-danger icon", "×"); del.title = "Supprimer";
+  up.onclick = e => { e.preventDefault(); move(list, i, -1); };
+  down.onclick = e => { e.preventDefault(); move(list, i, 1); };
+  del.onclick = e => { e.preventDefault(); if (confirm("Supprimer cet élément ?")) { list.splice(i, 1); changed({ structure: true }); } };
+  box.append(up, down, del);
+  return box;
+}
+
+const openItems = new WeakSet();  // entrées dépliées (gardées dépliées quand on redessine)
+function listSection(key) {
+  const schema = SCHEMAS[key], list = CV.data[key];
+  const body = el("div", "card-body");
+  list.forEach((item, i) => {
+    const d = el("details", "entry");
+    d.open = openItems.has(item);
+    d.addEventListener("toggle", () => d.open ? openItems.add(item) : openItems.delete(item));
+    const sum = el("summary");
+    const t = el("span", "t");
+    const setTitle = () => {
+      const [a, b] = schema.title(item);
+      t.replaceChildren(document.createTextNode(a || "(sans titre)"), el("span", "sub", b ? " — " + b : ""));
+    };
+    setTitle();
+    sum.append(t, entryControls(list, i));
+    const grid = el("div", "grid entry-body");
+    for (const f of schema.fields) {
+      const w = input(item, f, { onInput: setTitle });
+      grid.append(w);
+      if (f.key === "end") {
+        const endInput = w.querySelector("input");
+        const sync = () => { endInput.disabled = !!item.current; };
+        sync(); grid.addEventListener("change", sync);
+      }
+    }
+    d.append(sum, grid);
+    body.append(d);
+  });
+  const add = el("button", "add", schema.add);
+  add.onclick = () => { const item = {}; list.push(item); openItems.add(item); changed({ structure: true }); };
+  body.append(add);
+  return card(key, SECTION_LABELS[key], list.length, body);
+}
+
+function infoSection() {
+  const info = CV.data.info;
+  const body = el("div", "card-body");
+  // photo
+  const pbox = el("div", "photo-box");
+  const ph = el("div", "photo" + (CV.data.photo ? " has" : ""), "Ajouter une photo");
+  if (CV.data.photo) ph.style.backgroundImage = `url(${CV.data.photo})`;
+  ph.onclick = () => $("#photo-file").click();
+  const pcol = el("div");
+  pcol.style.cssText = "display:flex; flex-direction:column; gap:6px";
+  const prow = el("div", "row");
+  const change = el("button", null, CV.data.photo ? "Changer" : "Choisir une photo");
+  change.onclick = () => $("#photo-file").click();
+  prow.append(change);
+  if (CV.data.photo) {
+    const rm = el("button", "btn-danger", "Retirer");
+    rm.onclick = () => { CV.data.photo = null; changed({ structure: true }); };
+    prow.append(rm);
+  }
+  pcol.append(prow, input(CV.data, { key: "show_photo", label: "Afficher la photo sur le CV", type: "check" }),
+    el("div", "hint", "Les logiciels RH ignorent la photo : elle ne gêne pas la lecture. Décoche-la pour les candidatures à l'international."));
+  pbox.append(ph, pcol);
+  body.append(pbox);
+
+  const grid = el("div", "grid");
+  [
+    { key: "first_name", label: "Prénom" }, { key: "last_name", label: "Nom" },
+    { key: "title", label: "Titre / poste visé", ph: "Stage DevOps — 6 mois à partir de mars 2027", full: true },
+    { key: "email", label: "E-mail", type: "email" }, { key: "phone", label: "Téléphone", ph: "06 12 34 56 78" },
+    { key: "city", label: "Ville", ph: "Bordeaux (mobile en France)" }, { key: "linkedin", label: "LinkedIn", ph: "linkedin.com/in/…" },
+    { key: "github", label: "GitHub / GitLab", ph: "github.com/…" }, { key: "website", label: "Site / portfolio" },
+    { key: "availability", label: "Disponibilité", ph: "Disponible dès mars 2027" }, { key: "extra", label: "Autres infos", ph: "Permis B, véhiculé" },
+    { key: "summary", label: "Profil / accroche (3-4 lignes, avec les mots-clés de l'offre)", type: "textarea", full: true, rows: 4 },
+  ].forEach(f => grid.append(input(info, f)));
+  body.append(grid);
+  return card("info", "Informations personnelles", null, body);
+}
+
+// catégories qu'on retrouve dans la plupart des CV informatiques (ordre habituel)
+const SKILL_CATEGORIES = {
+  fr: ["Langages", "Frameworks", "Bases de données", "DevOps / Cloud", "Systèmes / Réseaux", "Cybersécurité", "Outils", "Méthodes"],
+  en: ["Languages", "Frameworks", "Databases", "DevOps / Cloud", "Systems / Networking", "Security", "Developer Tools", "Methodologies"],
+};
+function hardSkillsSection() {
+  const list = CV.data.hard_skills;
+  const body = el("div", "card-body");
+  body.append(el("p", "hint", "Regroupe par catégorie (Langages, Frameworks, DevOps, Outils…). Écris les noms exacts utilisés dans les offres : « Kubernetes » plutôt que « k8s »."));
+  list.forEach((g, i) => {
+    const row = el("div", "entry");
+    row.style.padding = "8px";
+    const top = el("div", "row");
+    const cat = el("input", "grow");
+    cat.placeholder = "Catégorie (ex : Langages)";
+    cat.value = g.category || "";
+    cat.addEventListener("input", () => { g.category = cat.value; changed(); });
+    top.append(cat, entryControls(list, i));
+    const box = el("div");
+    box.style.marginTop = "6px";
+    chipEditor(box, { placeholder: "Python, Docker… (Entrée pour ajouter)", onChange: v => { g.items = v; changed(); } }).set(g.items);
+    row.append(top, box);
+    body.append(row);
+  });
+  const add = el("button", "add", "+ Ajouter une catégorie");
+  add.onclick = () => { list.push({ category: "", items: [] }); changed({ structure: true }); };
+  const have = new Set(list.map(g => (g.category || "").trim().toLowerCase()));
+  const sugg = SKILL_CATEGORIES[CV.data.lang === "en" ? "en" : "fr"].filter(c => !have.has(c.toLowerCase()));
+  const row = el("div", "row");
+  row.style.flexWrap = "wrap";
+  row.append(add);
+  if (sugg.length) {
+    row.append(el("span", "hint", "ou :"));
+    sugg.forEach(c => {
+      const b = el("button", "btn-ghost icon", "+ " + c);
+      b.title = "Catégorie courante dans les CV informatiques";
+      b.onclick = () => { list.push({ category: c, items: [] }); changed({ structure: true }); };
+      row.append(b);
+    });
+  }
+  body.append(row);
+  return card("hard_skills", SECTION_LABELS.hard_skills, list.reduce((n, g) => n + (g.items?.length || 0), 0), body);
+}
+
+function chipsSection(key, placeholder, hint) {
+  const body = el("div", "card-body");
+  if (hint) body.append(el("p", "hint", hint));
+  const box = el("div");
+  chipEditor(box, { placeholder, onChange: v => { CV.data[key] = v; changed(); } }).set(CV.data[key]);
+  body.append(box);
+  return card(key, SECTION_LABELS[key], CV.data[key].length, body);
+}
+
+function languagesSection() {
+  const list = CV.data.languages;
+  const body = el("div", "card-body");
+  list.forEach((l, i) => {
+    const row = el("div", "row");
+    const name = el("input", "grow"); name.placeholder = "Langue"; name.value = l.name || "";
+    const lvl = el("input", "grow"); lvl.placeholder = "Niveau (C1, courant, TOEIC 900…)"; lvl.value = l.level || "";
+    lvl.setAttribute("list", "dl-levels");
+    name.addEventListener("input", () => { l.name = name.value; changed(); });
+    lvl.addEventListener("input", () => { l.level = lvl.value; changed(); });
+    row.append(name, lvl, entryControls(list, i));
+    body.append(row);
+  });
+  const add = el("button", "add", "+ Ajouter une langue");
+  add.onclick = () => { list.push({ name: "", level: "" }); changed({ structure: true }); };
+  body.append(add);
+  return card("languages", SECTION_LABELS.languages, list.length, body);
+}
+
+function layoutSection() {
+  const body = el("div", "card-body");
+  const grid = el("div", "grid");
+  const langF = el("label", "field", "Langue des titres de sections");
+  const lang = el("select");
+  [["fr", "Français"], ["en", "English"]].forEach(([v, t]) => lang.add(new Option(t, v)));
+  lang.value = CV.data.lang || "fr";
+  lang.onchange = () => { CV.data.lang = lang.value; changed(); };
+  langF.append(lang);
+  grid.append(langF);
+  body.append(grid, el("div", "field", "Ordre conseillé"));
+  const presets = el("div", "presets");
+  const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+  const hint = el("div", "preset-hint");
+  ORDER_PRESETS.forEach(p => {
+    const b = el("button", same(CV.data.section_order, p.order) ? "on" : "", p.label);
+    b.title = p.why;
+    b.onclick = () => { CV.data.section_order = [...p.order]; changed({ structure: true }); };
+    presets.append(b);
+    if (same(CV.data.section_order, p.order)) hint.textContent = p.why;
+  });
+  body.append(presets, hint, el("div", "field", "Ordre des sections (ajuste à la main si besoin)"));
+  const order = el("div", "order-list");
+  CV.data.section_order.forEach((k, i) => {
+    const it = el("div", "order-item");
+    it.append(el("span", null, SECTION_LABELS[k]), entryControls(CV.data.section_order, i));
+    it.querySelector(".btn-danger").remove();
+    order.append(it);
+  });
+  body.append(order);
+  return card("layout", "Mise en page et ordre des sections", null, body);
+}
+
+function renderSections() {
+  const scroll = $("#editor").scrollTop;
+  const builders = {
+    experience: () => listSection("experience"), projects: () => listSection("projects"),
+    education: () => listSection("education"), certifications: () => listSection("certifications"),
+    hard_skills: hardSkillsSection, languages: languagesSection,
+    soft_skills: () => chipsSection("soft_skills", "Autonomie, travail en équipe… (Entrée pour ajouter)",
+      "Mieux vaut 4-5 qualités illustrées dans tes expériences qu'une longue liste."),
+    interests: () => chipsSection("interests", "Escalade, CTF, photo… (Entrée pour ajouter)"),
+  };
+  $("#sections").replaceChildren(infoSection(), ...CV.data.section_order.map(k => builders[k]()), layoutSection());
+  $("#sections").style.cssText = "display:flex; flex-direction:column; gap:14px";
+  $("#editor").scrollTop = scroll;
+}
+
+/* ---------- photo : recadrée en carré et réduite avant d'être enregistrée ---------- */
+$("#photo-file").onchange = () => {
+  const file = $("#photo-file").files[0];
+  $("#photo-file").value = "";
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    const side = Math.min(img.width, img.height), size = Math.min(500, side);
+    const c = document.createElement("canvas"); c.width = c.height = size;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, size, size);
+    // recadrage centré, légèrement vers le haut (visage)
+    ctx.drawImage(img, (img.width - side) / 2, Math.max(0, (img.height - side) / 2.6), side, side, 0, 0, size, size);
+    CV.data.photo = c.toDataURL("image/jpeg", 0.88);
+    CV.data.show_photo = true;
+    URL.revokeObjectURL(img.src);
+    changed({ structure: true });
+  };
+  img.onerror = () => toast("Image illisible");
+  img.src = URL.createObjectURL(file);
+};
+
+/* ---------- comparaison avec une offre ---------- */
+const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+function cvText() {
+  const { photo, accent, section_order, ...rest } = CV.data;
+  return norm(JSON.stringify(rest).replace(/\\n/g, " "));
+}
+function hasSkill(text, skill) {
+  const s = norm(skill).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9+#])${s}($|[^a-z0-9+#])`).test(text);
+}
+const jobLabel = j => `${j.title} — ${j.company || "?"} (#${j.id})`;
+
+function renderMatch() {
+  const box = $("#match-body");
+  $("#job-clear").classList.toggle("hidden", !matchedJob);
+  box.classList.toggle("hidden", !matchedJob);
+  if (!matchedJob) return;
+  const j = matchedJob, text = cvText();
+  const skills = j.skills || [];
+  const found = skills.filter(s => hasSkill(text, s)), missing = skills.filter(s => !hasSkill(text, s));
+  const head = el("div", "row");
+  const pct = skills.length ? Math.round(found.length / skills.length * 100) : null;
+  head.append(el("span", "score", pct == null ? "Pas de compétences détectées dans cette offre" : `${found.length}/${skills.length} compétences de l'offre présentes dans ton CV (${pct} %)`));
+  const pills = el("div", "pills");
+  found.forEach(s => pills.append(el("span", "pill ok", s)));
+  missing.forEach(s => {
+    const b = el("button", "pill miss", s);
+    b.title = "Ajouter aux compétences techniques (seulement si tu la maîtrises !)";
+    b.onclick = () => addSkill(s);
+    pills.append(b);
+  });
+  const actions = el("div", "row");
+  const open = el("a", "small", "Voir l'offre ↗"); open.href = j.link; open.target = "_blank"; open.rel = "noopener";
+  actions.append(open, el("span", "spacer"));
+  if (CV.job_id !== j.id) {
+    const copy = el("button", null, "Créer une copie du CV pour cette offre");
+    copy.onclick = () => duplicate(`CV — ${j.company || j.title}`, j.id);
+    actions.append(copy);
+  }
+  box.replaceChildren(head, pills, ...(missing.length ? [el("div", "hint", "Clique sur une compétence manquante pour l'ajouter. Pense aussi à reprendre les mots de l'offre dans ton titre, ton profil et tes missions.")] : []), actions);
+}
+
+function addSkill(skill) {
+  let g = CV.data.hard_skills.find(g => /autre|other|à classer/i.test(g.category || ""));
+  if (!g) { g = { category: CV.data.lang === "en" ? "Other" : "Autres", items: [] }; CV.data.hard_skills.push(g); }
+  g.items = [...(g.items || []), skill];
+  changed({ structure: true });
+  toast(`« ${skill} » ajouté dans « ${g.category} »`);
+}
+
+function selectJob(j) {
+  matchedJob = j || null;
+  $("#job-input").value = j ? jobLabel(j) : "";
+  renderMatch();
+}
+$("#job-input").addEventListener("change", () => {
+  const m = $("#job-input").value.match(/\(#(\d+)\)$/);
+  selectJob(m ? JOBS.find(j => j.id === +m[1]) : null);
+});
+$("#job-clear").onclick = () => selectJob(null);
+
+/* ---------- gestion des CV ---------- */
+async function loadList(selectId) {
+  const list = await api("/api/cvs");
+  const s = $("#cv-select");
+  s.replaceChildren(...list.map(c => new Option(c.name, c.id)));
+  if (selectId) s.value = selectId;
+  return list;
+}
+
+async function openCv(id) {
+  await flushSave();
+  CV = await api(`/api/cvs/${id}`);
+  const d = CV.data;
+  d.section_order = [...new Set([...(d.section_order || []), ...Object.keys(SECTION_LABELS)])].filter(k => SECTION_LABELS[k]);
+  for (const k of ["experience", "projects", "education", "certifications", "hard_skills", "languages", "soft_skills", "interests"])
+    if (!Array.isArray(d[k])) d[k] = [];
+  const toList = v => Array.isArray(v) ? v : String(v || "").split(",").map(x => x.trim()).filter(Boolean);
+  d.hard_skills.forEach(g => g.items = toList(g.items));
+  d.projects.forEach(p => p.tech = toList(p.tech));
+  $("#cv-select").value = id;
+  store.set("cv-current", id);
+  history.replaceState(null, "", `/cv?id=${id}`);
+  $("#save-state").textContent = "";
+  renderSections();
+  renderStyleBar();
+  if (CV.job_id && JOBS.some(j => j.id === CV.job_id)) selectJob(JOBS.find(j => j.id === CV.job_id));
+  else renderMatch();
+  refreshPreview();
+}
+
+async function duplicate(name, jobId) {
+  await flushSave();
+  const c = await api("/api/cvs", { method: "POST", body: JSON.stringify({ from_id: CV.id, name, job_id: jobId ?? CV.job_id }) });
+  await loadList(c.id);
+  await openCv(c.id);
+  toast("Copie créée : tu peux l'adapter sans toucher à l'original");
+}
+
+$("#cv-select").onchange = () => { $("#import-note").classList.add("hidden"); openCv(+$("#cv-select").value); };
+$("#cv-new").onclick = async () => {
+  const name = prompt("Nom du nouveau CV :", "Nouveau CV");
+  if (name == null) return;
+  await flushSave();
+  const c = await api("/api/cvs", { method: "POST", body: JSON.stringify({ name }) });
+  await loadList(c.id); openCv(c.id);
+};
+$("#cv-dup").onclick = () => {
+  const name = prompt("Nom de la copie :", CV.name + " (copie)");
+  if (name != null) duplicate(name);
+};
+$("#cv-rename").onclick = async () => {
+  const name = prompt("Nouveau nom :", CV.name);
+  if (!name?.trim()) return;
+  await api(`/api/cvs/${CV.id}`, { method: "PUT", body: JSON.stringify({ name }) });
+  CV.name = name.trim(); loadList(CV.id);
+};
+$("#cv-delete").onclick = async () => {
+  if (!confirm(`Supprimer définitivement « ${CV.name} » ?`)) return;
+  clearTimeout(saveTimer); saveTimer = null;
+  await api(`/api/cvs/${CV.id}`, { method: "DELETE" });
+  const list = await loadList();
+  if (list.length) openCv(list[0].id);
+  else { const c = await api("/api/cvs", { method: "POST", body: JSON.stringify({ name: "Mon CV" }) }); await loadList(c.id); openCv(c.id); }
+  toast("CV supprimé");
+};
+
+/* ---------- import d'un CV existant en PDF ---------- */
+async function importPdf(file) {
+  if (!file) return;
+  if (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf") return toast("Choisis un fichier PDF");
+  await flushSave();
+  toast("Lecture du PDF…");
+  const form = new FormData();
+  form.append("file", file);
+  let res;
+  try {
+    const r = await fetch("/api/cvs/import", { method: "POST", body: form });
+    if (!r.ok) throw new Error((await r.text()).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+    res = await r.json();
+  } catch (e) { return toast("Import impossible : " + e.message); }
+  await loadList(res.cv.id);
+  await openCv(res.cv.id);
+  // déplie tout pour faciliter la relecture
+  ["experience", "projects", "education", "certifications"].forEach(k => CV.data[k].forEach(it => openItems.add(it)));
+  ["info", ...Object.keys(SECTION_LABELS)].forEach(k => store.set("cv-open-" + k, "1"));
+  renderSections();
+  const d = CV.data, n = d.experience.length + d.projects.length + d.education.length;
+  $("#import-note-text").textContent = res.warnings.length ? res.warnings.join(" ")
+    : `Importé : ${d.experience.length} expérience(s), ${d.projects.length} projet(s), ${d.education.length} formation(s)` +
+      `${d.photo ? ", photo" : ""}. La lecture est automatique : relis chaque section (dates, entreprise / poste, lieu) avant d'exporter.` +
+      (n ? "" : " Aucune expérience reconnue : vérifie que les titres de sections du PDF sont classiques.");
+  $("#import-note").classList.remove("hidden");
+}
+$("#cv-import").onclick = () => $("#pdf-file").click();
+$("#pdf-file").onchange = () => { const f = $("#pdf-file").files[0]; $("#pdf-file").value = ""; importPdf(f); };
+$("#import-note-close").onclick = () => $("#import-note").classList.add("hidden");
+let dragDepth = 0;
+const isFileDrag = e => [...(e.dataTransfer?.types || [])].includes("Files");
+document.addEventListener("dragenter", e => { if (isFileDrag(e)) { dragDepth++; $("#drop-hint").classList.remove("hidden"); } });
+document.addEventListener("dragleave", e => { if (isFileDrag(e) && --dragDepth <= 0) { dragDepth = 0; $("#drop-hint").classList.add("hidden"); } });
+document.addEventListener("dragover", e => { if (isFileDrag(e)) e.preventDefault(); });
+document.addEventListener("drop", e => {
+  if (!isFileDrag(e)) return;
+  e.preventDefault(); dragDepth = 0; $("#drop-hint").classList.add("hidden");
+  const f = [...e.dataTransfer.files].find(f => /pdf/i.test(f.type) || /\.pdf$/i.test(f.name));
+  if (f) importPdf(f); else toast("Dépose un fichier PDF");
+});
+
+/* ---------- export et vérification ---------- */
+$("#export").onclick = async () => {
+  await flushSave();
+  try {
+    const { blob, filename } = await pdfBlob(true);
+    const a = el("a"); a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  } catch (e) { toast("Export impossible : " + e.message); }
+};
+
+function atsChecks(text) {
+  const i = CV.data.info, out = [];
+  const add = (ok, msg, kind) => out.push({ cls: kind || (ok ? "ok" : "warn"), msg: (ok ? "✓ " : "! ") + msg });
+  add(i.first_name && i.last_name, "Nom et prénom en haut du CV");
+  add(/\S+@\S+\.\S+/.test(i.email), "Adresse e-mail valide");
+  add(/\d{6,}/.test((i.phone || "").replace(/\D/g, "")), "Numéro de téléphone");
+  add(i.title, "Titre du poste visé sous le nom (les recruteurs et les ATS s'en servent pour classer)");
+  add((i.summary || "").length > 60, "Profil / accroche rédigé");
+  const exp = CV.data.experience;
+  add(exp.length || CV.data.projects.length, "Au moins une expérience ou un projet");
+  add(exp.every(e => e.start && (e.end || e.current)), "Toutes les expériences ont des dates");
+  add([...exp, ...CV.data.projects].every(e => (e.description || "").trim()), "Chaque expérience / projet décrit tes missions");
+  add(CV.data.hard_skills.some(g => g.items?.length), "Compétences techniques renseignées");
+  add(CV.data.languages.length, "Langues indiquées");
+  const missingText = [i.email, i.phone, i.last_name].filter(v => v && !norm(text).includes(norm(v).trim()));
+  add(!missingText.length, missingText.length ? `Introuvable dans le texte extrait : ${missingText.join(", ")}` : "Coordonnées bien lisibles dans le texte extrait");
+  if (matchedJob) {
+    const miss = (matchedJob.skills || []).filter(s => !hasSkill(cvText(), s));
+    add(!miss.length, miss.length ? `Mots-clés de l'offre absents : ${miss.join(", ")}` : "Tous les mots-clés de l'offre sont présents");
+  }
+  out.push({ cls: "info", msg: "Format : PDF texte sur une colonne, police standard, sans tableau ni zone de texte, titres de sections classiques." });
+  return out;
+}
+$("#ats-check").onclick = async () => {
+  await flushSave();
+  const { text } = await api("/api/cv/text", { method: "POST", body: JSON.stringify(CV.data) });
+  $("#ats-list").replaceChildren(...atsChecks(text).map(c => el("div", c.cls, c.msg)));
+  $("#ats-text").textContent = text;
+  $("#ats-dialog").showModal();
+};
+$("#ats-close").onclick = () => $("#ats-dialog").close();
+
+/* ---------- style et couleur (barre d'aperçu) ---------- */
+const SWATCHES = ["#1f4e79", "#0f766e", "#334155", "#7c2d12", "#6d28d9", "#9f1239"];
+function renderStyleBar() {
+  const style = CV.data.style || "moderne", accent = (CV.data.accent || "#1f4e79").toLowerCase();
+  document.querySelectorAll("#style-seg button").forEach(b => {
+    b.classList.toggle("on", b.dataset.style === style);
+    b.onclick = () => { CV.data.style = b.dataset.style; renderStyleBar(); changed(); };
+  });
+  const custom = el("label", "swatch swatch-custom" + (SWATCHES.includes(accent) ? "" : " on"));
+  custom.title = "Autre couleur";
+  const picker = el("input"); picker.type = "color"; picker.value = accent;
+  picker.addEventListener("input", () => { CV.data.accent = picker.value; changed(); });
+  picker.addEventListener("change", renderStyleBar);
+  custom.append(picker);
+  $("#swatches").replaceChildren(...SWATCHES.map(c => {
+    const b = el("button", "swatch" + (c === accent ? " on" : ""));
+    b.style.background = c; b.title = c;
+    b.onclick = () => { CV.data.accent = c; renderStyleBar(); changed(); };
+    return b;
+  }), custom);
+}
+
+/* ---------- démarrage ---------- */
+(async () => {
+  const params = new URLSearchParams(location.search);
+  JOBS = await api("/api/jobs").catch(() => []);
+  const rank = { entretien: 0, postule: 1, interesse: 2, en_attente: 3, a_trier: 4 };
+  JOBS.sort((a, b) => (rank[a.status] ?? 9) - (rank[b.status] ?? 9));
+  $("#dl-jobs").replaceChildren(...JOBS.map(j => new Option(jobLabel(j))));
+  let list = await loadList();
+  if (!list.length) {
+    await api("/api/cvs", { method: "POST", body: JSON.stringify({ name: "Mon CV" }) });
+    list = await loadList();
+  }
+  const wanted = +params.get("id") || +store.get("cv-current");
+  await openCv(list.some(c => c.id === wanted) ? wanted : list[0].id);
+  const jobId = +params.get("job");
+  if (jobId) {
+    const j = JOBS.find(x => x.id === jobId);
+    if (j) { selectJob(j); $("#match").scrollIntoView({ block: "nearest" }); }
+  }
+})();
+</script>
+</body>
+</html>

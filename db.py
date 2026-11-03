@@ -41,6 +41,14 @@ CREATE TABLE IF NOT EXISTS jobs (
     updated_at  TEXT DEFAULT (datetime('now', 'localtime'))
 );
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
+CREATE TABLE IF NOT EXISTS cvs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL,
+    data        TEXT NOT NULL DEFAULT '{}',   -- JSON (voir cv_pdf.empty_cv)
+    job_id      INTEGER,                      -- offre pour laquelle ce CV a été adapté (optionnel)
+    created_at  TEXT DEFAULT (datetime('now', 'localtime')),
+    updated_at  TEXT DEFAULT (datetime('now', 'localtime'))
+);
 """
 
 

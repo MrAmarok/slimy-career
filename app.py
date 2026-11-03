@@ -7,9 +7,11 @@ from collections import deque
 from pathlib import Path
 from threading import Thread
 
-from flask import Flask, abort, jsonify, render_template, request
+from flask import Flask, Response, abort, jsonify, render_template, request
 
 import config
+import cv_import
+import cv_pdf
 import db
 import search_plan
 import skills
@@ -18,6 +20,7 @@ from scrapers import SCRAPERS
 app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.json.sort_keys = False  # garder l'ordre des catégories
+app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # import de CV en PDF
 ROOT = Path(__file__).parent
 scrape_state = {"proc": None, "log": deque(maxlen=300), "start_count": 0, "stopped": False}
 STEP_RE = re.compile(r"^\[(\d+)/(\d+)\] \[(\w+)\] « (.+) » à (.+) \.\.\.$")
@@ -30,6 +33,132 @@ def job_count():
 @app.get("/")
 def index():
     return render_template("index.html")
+
+
+@app.get("/cv")
+def cv_page():
+    return render_template("cv.html")
+
+
+# ---------- CV ----------
+
+def _cv_dict(row):
+    d = dict(row)
+    d["data"] = {**cv_pdf.empty_cv(), **json.loads(d["data"] or "{}")}
+    return d
+
+
+def _cv_payload():
+    data = request.get_json(force=True)
+    if not isinstance(data, dict):
+        abort(400, "JSON attendu")
+    if "data" in data and not isinstance(data["data"], dict):
+        abort(400, "data doit être un objet")
+    return data
+
+
+@app.get("/api/cvs")
+def list_cvs():
+    rows = db.connect().execute("SELECT id, name, job_id, updated_at FROM cvs ORDER BY updated_at DESC, id DESC").fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.post("/api/cvs")
+def create_cv():
+    """Nouveau CV : vide, ou copie d'un CV existant (from_id) pour l'adapter à une offre."""
+    data = _cv_payload()
+    conn = db.connect()
+    content = cv_pdf.empty_cv()
+    if data.get("from_id"):
+        src = conn.execute("SELECT data FROM cvs WHERE id = ?", (data["from_id"],)).fetchone()
+        if not src:
+            abort(404)
+        content = json.loads(src["data"])
+    if isinstance(data.get("data"), dict):
+        content = data["data"]
+    name = str(data.get("name") or "").strip() or "Mon CV"
+    cur = conn.execute("INSERT INTO cvs (name, data, job_id) VALUES (?, ?, ?)",
+                       (name, json.dumps(content, ensure_ascii=False), data.get("job_id")))
+    conn.commit()
+    return jsonify(_cv_dict(conn.execute("SELECT * FROM cvs WHERE id = ?", (cur.lastrowid,)).fetchone())), 201
+
+
+@app.post("/api/cvs/import")
+def import_cv():
+    """Crée un nouveau CV à partir d'un PDF existant (texte extrait et rangé dans les sections)."""
+    file = request.files.get("file")
+    if not file or not file.filename:
+        abort(400, "aucun fichier")
+    raw = file.read()
+    if not raw.startswith(b"%PDF"):
+        abort(400, "ce fichier n'est pas un PDF")
+    try:
+        data, warnings = cv_import.parse_pdf(raw)
+    except Exception as e:
+        abort(400, f"PDF illisible : {e}")
+    name = "Import — " + (Path(file.filename).stem or "CV")
+    conn = db.connect()
+    cur = conn.execute("INSERT INTO cvs (name, data) VALUES (?, ?)", (name, json.dumps(data, ensure_ascii=False)))
+    conn.commit()
+    cv = _cv_dict(conn.execute("SELECT * FROM cvs WHERE id = ?", (cur.lastrowid,)).fetchone())
+    return jsonify(cv=cv, warnings=warnings), 201
+
+
+@app.get("/api/cvs/<int:cv_id>")
+def get_cv(cv_id):
+    row = db.connect().execute("SELECT * FROM cvs WHERE id = ?", (cv_id,)).fetchone()
+    if not row:
+        abort(404)
+    return jsonify(_cv_dict(row))
+
+
+@app.put("/api/cvs/<int:cv_id>")
+def update_cv(cv_id):
+    data = _cv_payload()
+    fields = {}
+    if "name" in data:
+        fields["name"] = str(data["name"]).strip() or "Mon CV"
+    if "data" in data:
+        fields["data"] = json.dumps(data["data"], ensure_ascii=False)
+    if "job_id" in data:
+        fields["job_id"] = data["job_id"] if isinstance(data["job_id"], int) else None
+    if not fields:
+        abort(400, "rien à modifier")
+    conn = db.connect()
+    sets = ", ".join(f"{k} = ?" for k in fields)
+    cur = conn.execute(f"UPDATE cvs SET {sets}, updated_at = datetime('now', 'localtime') WHERE id = ?", (*fields.values(), cv_id))
+    conn.commit()
+    if cur.rowcount == 0:
+        abort(404)
+    return jsonify(updated_at=conn.execute("SELECT updated_at FROM cvs WHERE id = ?", (cv_id,)).fetchone()[0])
+
+
+@app.delete("/api/cvs/<int:cv_id>")
+def delete_cv(cv_id):
+    conn = db.connect()
+    conn.execute("DELETE FROM cvs WHERE id = ?", (cv_id,))
+    conn.commit()
+    return "", 204
+
+
+@app.post("/api/cv/pdf")
+def cv_to_pdf():
+    """PDF du CV envoyé (pas besoin qu'il soit enregistré : sert aussi à l'aperçu en direct)."""
+    data = request.get_json(force=True)
+    meta = {}
+    pdf, filename = cv_pdf.build(data if isinstance(data, dict) else {}, meta)
+    disposition = "attachment" if request.args.get("download") else "inline"
+    return Response(pdf, mimetype="application/pdf",
+                    headers={"Content-Disposition": f'{disposition}; filename="{filename}"', "X-Filename": filename,
+                             "X-Pages": str(meta.get("pages", 1))})
+
+
+@app.post("/api/cv/text")
+def cv_to_text():
+    """Texte extrait du PDF généré : ce qu'un logiciel de recrutement va lire."""
+    data = request.get_json(force=True)
+    pdf, _ = cv_pdf.build(data if isinstance(data, dict) else {})
+    return jsonify(text=cv_pdf.extract_text(pdf))
 
 
 @app.get("/api/meta")
