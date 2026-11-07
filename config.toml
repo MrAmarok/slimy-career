@@ -5,6 +5,7 @@
 locations = [
   "Bordeaux",
   "Île-de-France",
+  "Toulouse",
 ]
 country = "France"              # pays des recherches (Indeed) et pays par défaut des offres
 radius_km = 30                # rayon autour d'une ville (LinkedIn et Indeed)
@@ -26,7 +27,11 @@ searches = [
 # il suffit qu'elle corresponde à une de ces recherches. Un tag qui est un nom de catégorie ("DevOps / Cloud")
 # est découpé sur les "/" ("stage DevOps", "stage Cloud").
 contract = "stage"
-search_tags = []
+search_tags = [
+  "Cybersécurité",
+  "DevOps / Cloud",
+  "Développement logiciel",
+]
 search_skills = []
 
 # Sites activés : linkedin, hellowork, indeed, google
