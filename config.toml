@@ -4,8 +4,6 @@
 # Les offres gardent la zone qui les a trouvées (filtre "Zone de recherche" du kanban).
 locations = [
   "Bordeaux",
-  "Île-de-France",
-  "Toulouse",
 ]
 country = "France"              # pays des recherches (Indeed) et pays par défaut des offres
 radius_km = 30                # rayon autour d'une ville (LinkedIn et Indeed)
@@ -18,8 +16,8 @@ per_site = 2                    # recherches simultanées max sur un même site 
 # Recherches complètes, envoyées telles quelles à tous les sites (servent aussi de tag sur les offres trouvées).
 searches = [
   "stage devops",
-  "stage développeur full stack",
   "stage cybersécurité",
+  "cybersecurity",
 ]
 
 # Recherches "larges" : chaque tag et chaque compétence devient une petite recherche séparée,
@@ -30,7 +28,6 @@ contract = "stage"
 search_tags = [
   "Cybersécurité",
   "DevOps / Cloud",
-  "Développement logiciel",
 ]
 search_skills = []
 
@@ -45,6 +42,10 @@ sites = [
 # Google Jobs n'est accessible que via SerpAPI (100 recherches/mois gratuites : https://serpapi.com)
 # Mets ta clé ici ou dans la variable d'environnement SERPAPI_KEY. Sans clé, Google est ignoré.
 serpapi_key = ""
+
+# Traduction du CV en anglais (onglet CV) : clé « DeepL API Free » (500 000 caractères/mois gratuits :
+# https://www.deepl.com/pro-api). À mettre ici ou dans la variable d'environnement DEEPL_API_KEY.
+deepl_key = ""
 
 # Compétences détectées automatiquement dans les descriptions
 skills = [

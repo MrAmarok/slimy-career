@@ -19,6 +19,7 @@ DEFAULTS = {
     "search_skills": [],
     "sites": ["linkedin", "hellowork", "indeed", "google"],
     "serpapi_key": "",
+    "deepl_key": "",
     "skills": [],
     "categories": {
         "Cybersécurité": ["cybersécurité", "cyber-sécurité", "cybersecurity", "cyber", "CyberSOC", "cyberdéfense",
@@ -71,6 +72,10 @@ sites = {sites}
 # Mets ta clé ici ou dans la variable d'environnement SERPAPI_KEY. Sans clé, Google est ignoré.
 serpapi_key = {serpapi_key}
 
+# Traduction du CV en anglais (onglet CV) : clé « DeepL API Free » (500 000 caractères/mois gratuits :
+# https://www.deepl.com/pro-api). À mettre ici ou dans la variable d'environnement DEEPL_API_KEY.
+deepl_key = {deepl_key}
+
 # Compétences détectées automatiquement dans les descriptions
 skills = {skills}
 
@@ -118,7 +123,7 @@ def _clean_list(values):
 def save(data):
     """Valide, écrit config.toml et retourne la config enregistrée."""
     cfg = load()
-    for key in ("country", "serpapi_key", "contract"):
+    for key in ("country", "serpapi_key", "deepl_key", "contract"):
         if key in data:
             cfg[key] = str(data[key]).strip()
     for key in ("results_per_search", "max_age_days", "radius_km", "parallel_searches", "per_site"):
