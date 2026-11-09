@@ -3,6 +3,10 @@
 - vrai texte sélectionnable en police standard (Helvetica), aucune info importante dans une image ;
 - titres de sections classiques (« Expérience professionnelle », « Formation », « Compétences »…) ;
 - dates au format MM/AAAA, liens écrits en clair, métadonnées PDF (titre, auteur, mots-clés).
+
+Le CV tient sur une page par défaut : si le contenu déborde, la mise en page est resserrée petit à petit
+(marges et espacements d'abord, puis taille du texte) jusqu'à ce qu'il rentre. Une deuxième page n'est
+utilisée que si le CV l'autorise (`max_pages` = 2).
 """
 import base64
 import re
@@ -49,11 +53,21 @@ HEADINGS = {
 
 DEFAULT_ACCENT = "#1f4e79"
 PHOTO_SIZE = 30 * mm
+MARGIN_X, MARGIN_Y = 16 * mm, 14 * mm
+FIT_STEPS = 16  # nombre de crans de compaction essayés entre la mise en page normale et la plus serrée
+
+
+def fit_settings(t):
+    """Facteurs de mise en page pour une compaction t, de 0 (normale) à 1 (la plus serrée encore lisible).
+    On rogne d'abord ce qui ne se voit presque pas (marges, espaces, interligne), puis la taille du texte
+    (jusqu'à -20 %, soit environ 7,7 pt : en dessous le CV devient pénible à lire)."""
+    early, late = min(1, t / 0.4), max(0, (t - 0.25) / 0.75)
+    return {"font": 1 - 0.2 * late, "lead": 1 - 0.08 * early, "space": 1 - 0.6 * early, "margin": 1 - 0.4 * early}
 
 
 def empty_cv():
     return {
-        "lang": "fr", "style": "moderne", "accent": DEFAULT_ACCENT, "show_photo": True, "photo": None, "section_order": list(ORDER_PRESETS["etudiant"]),
+        "lang": "fr", "style": "moderne", "accent": DEFAULT_ACCENT, "max_pages": 1, "show_photo": True, "photo": None, "section_order": list(ORDER_PRESETS["etudiant"]),
         "info": {"first_name": "", "last_name": "", "title": "", "email": "", "phone": "", "city": "",
                  "linkedin": "", "github": "", "website": "", "availability": "", "extra": "", "summary": ""},
         "experience": [], "projects": [], "education": [], "certifications": [],
@@ -106,7 +120,7 @@ def date_range(item, words):
 def bullet_lines(text):
     lines = []
     for line in clean(text).split("\n"):
-        line = re.sub(r"^\s*[-•*–·]\s*", "", line).strip()
+        line = re.sub(r"^\s*(?:[-•–·]|\*(?!\*))\s*", "", line).strip()  # « **gras** » en début de ligne n'est pas une puce
         if line:
             lines.append(line)
     return lines
@@ -159,12 +173,12 @@ class LeftRight(Flowable):
 class SectionHeading(Flowable):
     """Titre de section du style moderne : barre de couleur, texte, puis filet fin jusqu'à la marge."""
 
-    def __init__(self, text, style, line_color):
+    def __init__(self, text, style, line_color, space=1):
         super().__init__()
-        self.text, self.style, self.line_color = text, style, line_color
+        self.text, self.style, self.line_color, self.space = text, style, line_color, space
 
     def wrap(self, avail_w, avail_h):
-        self.width, self.height = avail_w, self.style.fontSize + 9
+        self.width, self.height = avail_w, self.style.fontSize + 9 * self.space
         return self.width, self.height
 
     def getSpaceBefore(self):
@@ -172,7 +186,7 @@ class SectionHeading(Flowable):
 
     def draw(self):
         c, st = self.canv, self.style
-        base = 6
+        base = 6 * self.space
         c.saveState()
         c.setFillColor(st.textColor)
         c.roundRect(0, base - 1.5, 3.2, st.fontSize + 2, 1.4, stroke=0, fill=1)
@@ -222,7 +236,7 @@ def is_light(c):
     return 0.2126 * c.red + 0.7152 * c.green + 0.0722 * c.blue > 0.6
 
 
-def styles(accent, template="moderne"):
+def styles(accent, template="moderne", fit=None):
     modern = template == "moderne"
     text, muted = colors.HexColor("#1f2328"), colors.HexColor("#555b63")
     white = colors.white
@@ -286,12 +300,49 @@ def styles(accent, template="moderne"):
         st["line"] = mix(accent, white, 0.7)
         st["bullet"].dot_color = accent
         st["band"] = band
+    fit = fit or fit_settings(0)
+    for style in st.values():
+        if isinstance(style, ParagraphStyle):
+            style.fontSize *= fit["font"]
+            style.leading *= fit["font"] * fit["lead"]
+            style.spaceBefore *= fit["space"]
+            style.leftIndent *= fit["font"]
+            style.bulletIndent *= fit["font"]
+    st["space"] = fit["space"]
     return st
 
 
 def build(cv, meta=None):
-    """Retourne (pdf_bytes, nom_de_fichier). Si `meta` est un dict, y met le nombre de pages."""
+    """Retourne (pdf_bytes, nom_de_fichier).
+
+    Le CV est resserré juste ce qu'il faut pour tenir dans `max_pages` (1 par défaut, 2 si autorisé).
+    Si `meta` est un dict, y met : pages, max_pages, compact (0 = mise en page normale, 1 = la plus serrée)
+    et overflow (vrai si, même au plus serré, le contenu dépasse le nombre de pages autorisé)."""
     cv = {**empty_cv(), **(cv or {})}
+    max_pages = 2 if str(cv.get("max_pages")) == "2" else 1
+    level = 0
+    pdf, pages, filename = _render(cv, 0)
+    if pages > max_pages:
+        level = FIT_STEPS
+        pdf, pages, filename = _render(cv, 1)
+        if pages <= max_pages:  # ça rentre au plus serré : chercher la compaction la plus légère qui suffit
+            low = 0
+            while level - low > 1:
+                mid = (low + level) // 2
+                attempt = _render(cv, mid / FIT_STEPS)
+                if attempt[1] <= max_pages:
+                    level, (pdf, pages, filename) = mid, attempt
+                else:
+                    low = mid
+    if meta is not None:
+        meta.update(pages=pages, max_pages=max_pages, compact=level / FIT_STEPS, overflow=pages > max_pages)
+    return pdf, filename
+
+
+def _render(cv, t):
+    """Met le CV en page avec la compaction t (voir fit_settings). Retourne (pdf_bytes, pages, nom_de_fichier)."""
+    fit = fit_settings(t)
+    margin_x, margin_y, photo_size = MARGIN_X * fit["margin"], MARGIN_Y * fit["margin"], PHOTO_SIZE * fit["font"]
     info = {**empty_cv()["info"], **(cv.get("info") or {})}
     words = HEADINGS.get(cv.get("lang"), HEADINGS["fr"])
     try:
@@ -300,12 +351,12 @@ def build(cv, meta=None):
         accent = colors.HexColor(DEFAULT_ACCENT)
     template = cv.get("style") if cv.get("style") in STYLES else "moderne"
     modern = template == "moderne"
-    st = styles(accent, template)
+    st = styles(accent, template, fit)
 
     full_name = " ".join(filter(None, [clean(info["first_name"]), clean(info["last_name"])])) or "CV"
     photo = _photo(cv) if cv.get("show_photo") else None
-    page_w = A4[0] - 32 * mm
-    right_pad = PHOTO_SIZE + 6 * mm if photo else 0
+    page_w = A4[0] - 2 * margin_x
+    right_pad = photo_size + 6 * mm if photo else 0
     if st["center_header"] and not photo:
         for k in ("name", "title", "contact"):
             st[k] = ParagraphStyle(k + "c", parent=st[k], alignment=TA_CENTER)
@@ -327,14 +378,14 @@ def build(cv, meta=None):
     head += [Paragraph(l, cstyle) for l in lines if l]
     story += head
     head_h = sum(p.wrap(page_w, 1000)[1] + p.getSpaceBefore() for p in head)
-    content_h = max(head_h, PHOTO_SIZE if photo else 0)
-    band_pad = 7 * mm
+    content_h = max(head_h, photo_size if photo else 0)
+    band_pad = 7 * mm * fit["margin"]
     if content_h > head_h:
         story.append(Spacer(1, content_h - head_h))
     if modern:
-        story.append(Spacer(1, band_pad + 1 * mm))   # sortir du bandeau
+        story.append(Spacer(1, band_pad + 1 * mm * fit["space"]))   # sortir du bandeau
     elif template == "tech":
-        story.append(Spacer(1, 1 * mm))
+        story.append(Spacer(1, 1 * mm * fit["space"]))
 
     if clean(info["summary"]):
         story += _section(words["summary"], [[Paragraph(markup(info["summary"]).replace("\n", "<br/>"), st["body"])]], st)
@@ -349,12 +400,12 @@ def build(cv, meta=None):
     buf = BytesIO()
     keywords = [s for g in cv.get("hard_skills") or [] for s in as_list(g.get("items"))]
     doc = SimpleDocTemplate(
-        buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=14 * mm, bottomMargin=14 * mm,
+        buf, pagesize=A4, leftMargin=margin_x, rightMargin=margin_x, topMargin=margin_y, bottomMargin=margin_y,
         title=f"{full_name} - {clean(info['title']) or words['cv']}", author=full_name,
         subject=clean(info["title"]), keywords=", ".join(keywords), creator="Candidatures",
     )
 
-    top = 14 * mm
+    top = margin_y
 
     def first_page(canvas, doc_):
         if modern:  # bandeau de couleur derrière l'en-tête (forme dessinée : invisible pour les ATS)
@@ -363,14 +414,12 @@ def build(cv, meta=None):
             canvas.rect(0, A4[1] - top - content_h - band_pad, A4[0], top + content_h + band_pad + 1, stroke=0, fill=1)
             canvas.restoreState()
         if photo:
-            y = A4[1] - top - content_h / 2 - PHOTO_SIZE / 2
-            _draw_photo(canvas, photo, A4[0] - 16 * mm - PHOTO_SIZE, y, ring=colors.white if modern else None)
+            y = A4[1] - top - content_h / 2 - photo_size / 2
+            _draw_photo(canvas, photo, A4[0] - margin_x - photo_size, y, photo_size, ring=colors.white if modern else None)
 
     doc.build(story, onFirstPage=first_page)
-    if meta is not None:
-        meta["pages"] = doc.page
     filename = re.sub(r"[^A-Za-z0-9_-]+", "_", unicodedata.normalize("NFKD", f"CV_{full_name}").encode("ascii", "ignore").decode()).strip("_")
-    return buf.getvalue(), f"{filename or 'CV'}.pdf"
+    return buf.getvalue(), doc.page, f"{filename or 'CV'}.pdf"
 
 
 def _link(url):
@@ -383,14 +432,15 @@ def _link(url):
 
 def _section(title, entries, st):
     """Titre + trait + entrées ; le titre reste toujours collé à la première entrée."""
+    sp = st["space"]
     if st["modern"]:
-        heading = [SectionHeading(clean(title).upper(), st["heading"], st["line"]), Spacer(1, 3)]
+        heading = [SectionHeading(clean(title).upper(), st["heading"], st["line"], sp), Spacer(1, 3 * sp)]
     elif st["template"] == "tech":
         heading = [Paragraph(escape(clean(title).upper()), st["heading"]),
-                   HRFlowable(width="100%", thickness=0.6, color=st["rule"], spaceBefore=0, spaceAfter=3)]
+                   HRFlowable(width="100%", thickness=0.6, color=st["rule"], spaceBefore=0, spaceAfter=3 * sp)]
     else:
         heading = [Paragraph(escape(title.upper()), st["heading"]),
-                   HRFlowable(width="100%", thickness=0.7, color=st["heading"].textColor, spaceBefore=1, spaceAfter=4)]
+                   HRFlowable(width="100%", thickness=0.7, color=st["heading"].textColor, spaceBefore=1, spaceAfter=4 * sp)]
     return [KeepTogether(heading + entries[0])] + [KeepTogether(e) for e in entries[1:]]
 
 
@@ -408,7 +458,7 @@ def _entry(st, title, org, dates, sub, bullets):
         out.append(Paragraph(sub, st["sub"]))
     out += [bullet(markup(b), st["bullet"]) for b in bullets]
     if out:
-        out.append(Spacer(1, 4 if st["template"] == "tech" else 5))
+        out.append(Spacer(1, (4 if st["template"] == "tech" else 5) * st["space"]))
     return out
 
 
@@ -443,16 +493,16 @@ def _entries(key, cv, words, st):
                 text = (f"<b>{label} :</b> " if cat else "") + markup(", ".join(skills))
                 rows.append(bullet(text, st["bullet"]) if st["skill_bullets"] else Paragraph(text, st["skill"]))
         if rows:
-            out.append(rows + [Spacer(1, 3)])
+            out.append(rows + [Spacer(1, 3 * st["space"])])
     elif key == "languages":
         langs = [f"<b>{markup(l.get('name'))}</b>" + (f" : {markup(l.get('level'))}" if clean(l.get("level")) else "")
                  for l in items if clean(l.get("name"))]
         if langs:
-            out.append([Paragraph(f" {st['sep']} ".join(langs), st["body"]), Spacer(1, 3)])
+            out.append([Paragraph(f" {st['sep']} ".join(langs), st["body"]), Spacer(1, 3 * st["space"])])
     elif key in ("soft_skills", "interests"):
         values = as_list(items)
         if values:
-            out.append([Paragraph(markup(", ".join(values)), st["body"]), Spacer(1, 3)])
+            out.append([Paragraph(markup(", ".join(values)), st["body"]), Spacer(1, 3 * st["space"])])
     return [e for e in out if e]
 
 
@@ -471,20 +521,20 @@ def _photo(cv):
         return None
 
 
-def _draw_photo(canvas, img, x, y, ring=None):
+def _draw_photo(canvas, img, x, y, size, ring=None):
     if ring is not None:
         canvas.saveState()
         canvas.setFillColor(ring)
-        canvas.circle(x + PHOTO_SIZE / 2, y + PHOTO_SIZE / 2, PHOTO_SIZE / 2 + 1.8, stroke=0, fill=1)
+        canvas.circle(x + size / 2, y + size / 2, size / 2 + 1.8, stroke=0, fill=1)
         canvas.restoreState()
     canvas.saveState()
     path = canvas.beginPath()
-    path.circle(x + PHOTO_SIZE / 2, y + PHOTO_SIZE / 2, PHOTO_SIZE / 2)
+    path.circle(x + size / 2, y + size / 2, size / 2)
     canvas.clipPath(path, stroke=0, fill=0)
     iw, ih = img.getSize()
-    scale = PHOTO_SIZE / min(iw, ih)  # recadrage centré
+    scale = size / min(iw, ih)  # recadrage centré
     w, h = iw * scale, ih * scale
-    canvas.drawImage(img, x - (w - PHOTO_SIZE) / 2, y - (h - PHOTO_SIZE) / 2, w, h)
+    canvas.drawImage(img, x - (w - size) / 2, y - (h - size) / 2, w, h)
     canvas.restoreState()
 
 

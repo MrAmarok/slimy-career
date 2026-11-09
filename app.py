@@ -3,16 +3,20 @@ import json
 import re
 import subprocess
 import sys
+import uuid
 from collections import deque
 from pathlib import Path
 from threading import Thread
 
 from flask import Flask, Response, abort, jsonify, render_template, request
 
+import categories
 import config
 import cv_import
+import cv_lang
 import cv_pdf
 import db
+import geo
 import search_plan
 import skills
 from scrapers import SCRAPERS
@@ -150,7 +154,41 @@ def cv_to_pdf():
     disposition = "attachment" if request.args.get("download") else "inline"
     return Response(pdf, mimetype="application/pdf",
                     headers={"Content-Disposition": f'{disposition}; filename="{filename}"', "X-Filename": filename,
-                             "X-Pages": str(meta.get("pages", 1))})
+                             "X-Pages": str(meta["pages"]), "X-Compact": f'{meta["compact"]:.2f}',
+                             "X-Overflow": "1" if meta["overflow"] else "0"})
+
+
+@app.get("/api/cv/lang")
+def cv_lang_status():
+    """Indique si la traduction est prête (clé DeepL présente), sans renvoyer la clé."""
+    return jsonify(deepl=bool(cv_lang.deepl_key()))
+
+
+@app.post("/api/cv/check")
+def cv_check():
+    """Fautes d'orthographe et de grammaire du CV envoyé (LanguageTool)."""
+    body = request.get_json(force=True)
+    data = body.get("data") if isinstance(body, dict) else None
+    if not isinstance(data, dict):
+        abort(400, "data attendu")
+    try:
+        return jsonify(issues=cv_lang.check(data, body.get("ignore") or []), language=cv_lang.language_of(data))
+    except cv_lang.LangError as e:
+        return Response(str(e), status=502, mimetype="text/plain")
+
+
+@app.post("/api/cv/translate")
+def cv_translate():
+    """Copie du CV envoyé, traduite en anglais (DeepL). Le CV d'origine n'est pas modifié."""
+    body = request.get_json(force=True)
+    data = body.get("data") if isinstance(body, dict) else None
+    if not isinstance(data, dict):
+        abort(400, "data attendu")
+    try:
+        translated, chars = cv_lang.translate(data, str(body.get("variant") or "en-GB"))
+    except cv_lang.LangError as e:
+        return Response(str(e), status=502, mimetype="text/plain")
+    return jsonify(data=translated, chars=chars)
 
 
 @app.post("/api/cv/text")
@@ -182,6 +220,45 @@ def list_jobs():
     conn = db.connect()
     rows = conn.execute("SELECT * FROM jobs ORDER BY COALESCE(date_posted, created_at) DESC").fetchall()
     return jsonify([db.row_to_dict(r) for r in rows])
+
+
+@app.post("/api/jobs")
+def create_job():
+    """Offre ajoutée à la main (trouvée ailleurs, candidature spontanée, bouche-à-oreille…).
+    Compétences, catégories et pays sont détectés comme pour les offres trouvées par la recherche."""
+    data = request.get_json(force=True)
+    if not isinstance(data, dict):
+        abort(400, "JSON attendu")
+    text = {k: str(data.get(k) or "").strip() for k in ("title", "company", "location", "link", "contract", "description", "notes")}
+    if not text["title"]:
+        return Response("Le titre du poste est obligatoire.", status=400, mimetype="text/plain")
+    status = data.get("status") or "interesse"
+    if status not in db.STATUS_KEYS:
+        abort(400, "statut inconnu")
+    link = text["link"]
+    if link and not re.match(r"^[a-z][a-z0-9+.-]*:", link, re.I):
+        link = "https://" + link
+    cfg = config.load()
+    conn = db.connect()
+    if link:
+        same = conn.execute("SELECT title, company FROM jobs WHERE link = ?", (link,)).fetchone()
+        if same:
+            return Response(f"Cette offre est déjà dans le tableau : {same['title']} — {same['company'] or '?'}",
+                            status=409, mimetype="text/plain")
+    body = f"{text['title']}\n{text['description']}"
+    job = {
+        "title": text["title"], "company": text["company"] or None, "location": text["location"] or None,
+        "description": text["description"] or None, "contract": text["contract"] or None,
+        # la colonne link est obligatoire et unique : sans lien, un identifiant interne (jamais affiché)
+        "link": link or f"manuel:{uuid.uuid4().hex}", "source": "manuel", "tags": [], "zones": [],
+        "skills": skills.extract(body, skills.build_patterns(cfg.get("skills", []))),
+        "country": geo.country_of(text["location"] or None, cfg.get("country")),
+        "categories": categories.classify(text["title"], text["description"], categories.compile_categories(cfg.get("categories", {}))),
+    }
+    db.upsert_job(conn, job)
+    conn.execute("UPDATE jobs SET status = ?, notes = ? WHERE link = ?", (status, text["notes"], job["link"]))
+    conn.commit()
+    return jsonify(db.row_to_dict(conn.execute("SELECT * FROM jobs WHERE link = ?", (job["link"],)).fetchone())), 201
 
 
 @app.patch("/api/jobs/<int:job_id>")

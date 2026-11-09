@@ -262,6 +262,7 @@
     <button class="btn-ghost" id="ss-stop">Arrêter</button>
     <button class="btn-ghost hidden" id="ss-dismiss" title="Masquer">×</button>
   </div>
+  <button id="btn-add-job" title="Ajouter à la main une offre trouvée ailleurs (ou une candidature spontanée)">+ Ajouter une offre</button>
   <button class="btn-primary" id="btn-scrape">+ Chercher des offres</button>
 </header>
 <div class="progress hidden" id="progress"><div id="progress-bar"></div></div>
@@ -491,6 +492,31 @@
   <button class="del" id="bulk-delete">Supprimer</button>
   <button id="bulk-clear" title="Désélectionner (Échap)">×</button>
 </div>
+<dialog id="add-dialog">
+  <form class="modal" id="add-form" method="dialog">
+    <div style="display:flex; align-items:center; gap:8px">
+      <h2 style="flex:1">Ajouter une offre</h2>
+      <button type="button" class="btn-ghost" id="add-close" title="Fermer (Échap)" style="font-size:18px; padding:2px 9px">×</button>
+    </div>
+    <div class="muted small" style="margin-top:-8px">Pour une offre trouvée ailleurs, une candidature spontanée ou un contact. Seul le titre est obligatoire ;
+      colle la description pour que les compétences et la catégorie soient détectées.</div>
+    <div class="form-grid" style="margin-top:0">
+      <label>Titre du poste *<input id="add-title" required placeholder="Stage DevOps (6 mois)"></label>
+      <label>Entreprise<input id="add-company" placeholder="Nom de l'entreprise"></label>
+      <label>Lieu<input id="add-location" list="dl-zones" placeholder="Toulouse"></label>
+      <label>Contrat<input id="add-contract" placeholder="Stage, alternance, CDI…"></label>
+      <label>Lien de l'offre<input id="add-link" placeholder="https://… (optionnel)"></label>
+      <label>Colonne<select id="add-status"></select></label>
+    </div>
+    <div><label class="lbl" for="add-desc">Description</label><textarea id="add-desc" style="min-height:130px" placeholder="Colle ici le texte de l'offre"></textarea></div>
+    <div><label class="lbl" for="add-notes">Notes</label><textarea id="add-notes" style="min-height:50px" placeholder="Contact, date de relance, d'où vient l'offre…"></textarea></div>
+    <div style="display:flex; gap:8px; align-items:center">
+      <span class="small" id="add-error" style="flex:1; color:var(--danger, #b91c1c)"></span>
+      <button type="button" class="btn-ghost" id="add-cancel">Annuler</button>
+      <button type="submit" class="btn-primary" id="add-save">Ajouter</button>
+    </div>
+  </form>
+</dialog>
 <div class="toast" id="toast"></div>
 <datalist id="dl-skills"></datalist>
 <datalist id="dl-tags"></datalist>
@@ -958,6 +984,7 @@ function openDetail(j) {
   $("#d-title").textContent = j.title;
   $("#d-sub").textContent = [j.company, j.city || j.location].filter(Boolean).join(" · ");
   $("#d-link").href = j.link;
+  $("#d-link").classList.toggle("hidden", !/^https?:/i.test(j.link));  // offre ajoutée à la main sans lien
   $("#d-cv").href = `/cv?job=${j.id}`;
   renderStatusPicker();
   const info = [
@@ -1264,6 +1291,34 @@ $("#ss-stop").onclick = async () => { await api("/api/scrape/stop", { method: "P
 $("#ss-dismiss").onclick = () => { $("#scrape-status").classList.add("hidden"); $("#log-panel").classList.add("hidden"); };
 $("#ss-text").onclick = () => $("#log-panel").classList.toggle("hidden");
 $("#log-close").onclick = () => $("#log-panel").classList.add("hidden");
+
+/* ---------- ajout d'une offre à la main ---------- */
+const ADD_FIELDS = { title: "#add-title", company: "#add-company", location: "#add-location", contract: "#add-contract",
+                     link: "#add-link", description: "#add-desc", notes: "#add-notes" };
+$("#btn-add-job").onclick = () => {
+  Object.values(ADD_FIELDS).forEach(s => $(s).value = "");
+  $("#add-error").textContent = "";
+  $("#add-status").replaceChildren(...STATUSES.map(s => new Option(s.label, s.key)));
+  $("#add-status").value = "interesse";
+  $("#add-dialog").showModal();
+  $("#add-title").focus();
+};
+$("#add-close").onclick = $("#add-cancel").onclick = () => $("#add-dialog").close();
+$("#add-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const body = { status: $("#add-status").value };
+  for (const [k, s] of Object.entries(ADD_FIELDS)) body[k] = $(s).value;
+  $("#add-save").disabled = true;
+  try {
+    const job = await api("/api/jobs", { method: "POST", body: JSON.stringify(body) });
+    $("#add-dialog").close();
+    await load({ markFresh: true });
+    toast("Offre ajoutée");
+    const added = JOBS.find(j => j.id === job.id);
+    if (added) openDetail(added);
+  } catch (err) { $("#add-error").textContent = err.message; }
+  $("#add-save").disabled = false;
+});
 
 /* ---------- événements ---------- */
 $("#f-country").addEventListener("input", () => { fillCities(); render(); });

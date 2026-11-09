@@ -136,6 +136,17 @@
   .checklist .warn { background: var(--warn-soft); color: var(--warn); }
   .checklist .info { background: var(--soft); color: var(--muted); }
 
+  .issues { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; min-height: 80px; }
+  .issue { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; display: flex; flex-direction: column; gap: 5px; font-size: 13px; }
+  .issue .where { font-size: 11.5px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+  .issue .kind { font-weight: 600; text-transform: uppercase; letter-spacing: .03em; font-size: 10.5px; padding: 1px 7px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); }
+  .issue .kind.orthographe { background: #fee2e2; color: #b91c1c; }
+  .issue .kind.style { background: var(--soft); color: var(--muted); }
+  .issue .ctx { background: var(--soft); border-radius: 6px; padding: 5px 8px; line-height: 1.5; }
+  .issue mark { background: #fee2e2; color: #991b1b; border-bottom: 2px solid #ef4444; border-radius: 2px; padding: 0 1px; }
+  .issue .fixes { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .issue .fix { border-color: #86efac; background: var(--ok-soft); color: #166534; font-weight: 600; }
+
   .drop-hint { position: fixed; inset: 0; z-index: 60; background: rgba(37,99,235,.12); display: grid; place-items: center; pointer-events: none; }
   .drop-hint div { background: #fff; border: 2px dashed var(--accent); border-radius: 14px; padding: 28px 36px; font-weight: 600; color: var(--accent-text); box-shadow: var(--shadow-lg); }
   .import-note { border: 1px solid #fde68a; background: var(--warn-soft); color: var(--warn); border-radius: 12px; padding: 10px 14px; font-size: 13px; display: flex; gap: 10px; align-items: flex-start; }
@@ -172,6 +183,8 @@
       <button id="cv-new" title="Nouveau CV vide">Nouveau</button>
       <button id="cv-dup" title="Copier ce CV (pour l'adapter à une offre)">Dupliquer</button>
       <button id="cv-import" title="Créer un CV à partir d'un PDF existant (tu peux aussi glisser le PDF sur la page)">Importer un PDF</button>
+      <button id="cv-check" title="Chercher les fautes d'orthographe et de grammaire dans tout le CV (LanguageTool)">Corriger les fautes</button>
+      <button id="cv-translate" title="Créer une copie de ce CV traduite en anglais (DeepL)">Traduire en anglais</button>
       <button class="btn-ghost icon" id="cv-rename" title="Renommer">Renommer</button>
       <button class="btn-danger icon" id="cv-delete" title="Supprimer ce CV">Supprimer</button>
       <span class="save-state" id="save-state"></span>
@@ -195,6 +208,7 @@
     <div class="preview-bar">
       <b>Aperçu</b>
       <span class="page-count" id="page-count"></span>
+      <label class="check small" title="Par défaut le CV est resserré automatiquement (marges, espacements, puis taille du texte) pour tenir sur une seule page. Coche pour l'autoriser à s'étendre sur une deuxième page."><input type="checkbox" id="two-pages"> 2 pages autorisées</label>
       <span class="preview-state" id="preview-state"></span>
       <span class="spacer"></span>
       <div class="seg" id="style-seg" title="Style du CV">
@@ -214,6 +228,35 @@
     <div class="muted small">Texte extrait du PDF exporté, dans l'ordre où un ATS le lit. Si tout y est, lisible et dans le bon ordre, ton CV passe.</div>
     <div class="checklist" id="ats-list"></div>
     <pre id="ats-text"></pre>
+  </div>
+</dialog>
+
+<dialog id="check-dialog">
+  <div class="modal">
+    <div class="row"><h2 class="grow">Correcteur</h2><button id="check-again">Revérifier</button><button class="btn-ghost" id="check-close">×</button></div>
+    <div class="muted small" id="check-intro"></div>
+    <div class="issues" id="check-list"></div>
+  </div>
+</dialog>
+
+<dialog id="tr-dialog">
+  <div class="modal">
+    <div class="row"><h2 class="grow">Traduire le CV en anglais</h2><button class="btn-ghost" id="tr-close">×</button></div>
+    <div class="small">Crée une <b>copie</b> de ce CV traduite en anglais par DeepL : titre, profil, puces des expériences, projets et formations,
+      qualités, centres d'intérêt, langues. Les titres de sections et les dates passent en anglais automatiquement.
+      Ton CV en français n'est pas modifié.</div>
+    <div class="muted small">Ne sont pas touchés : nom, coordonnées, liens, entreprises, écoles, lieux, noms de projets et technologies.
+      Relis la copie (une machine ne connaît pas ton contexte), puis lance « Corriger les fautes » dessus : la vérification se fera en anglais.</div>
+    <label class="field">Variante
+      <select id="tr-variant"><option value="en-GB">Anglais britannique (Europe, Royaume-Uni)</option><option value="en-US">Anglais américain</option></select>
+    </label>
+    <div id="tr-key-box" class="hidden" style="display:flex; flex-direction:column; gap:6px">
+      <label class="field">Clé d'API DeepL<input type="password" id="tr-key" autocomplete="off" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:fx"></label>
+      <div class="hint">Gratuite (500 000 caractères par mois, un CV en fait environ 3 000) : crée un compte « DeepL API Free » sur
+        <a href="https://www.deepl.com/pro-api" target="_blank" rel="noopener">deepl.com/pro-api</a> et colle la clé ici.
+        Elle est enregistrée dans config.toml (ou mets-la dans la variable d'environnement DEEPL_API_KEY).</div>
+    </div>
+    <div class="row"><span class="grow small muted" id="tr-state"></span><button class="btn-ghost" id="tr-change-key">Changer la clé</button><button class="btn-primary" id="tr-go">Traduire</button></div>
   </div>
 </dialog>
 
@@ -366,13 +409,14 @@ async function pdfBlob(download = false) {
   const r = await fetch("/api/cv/pdf" + (download ? "?download=1" : ""), {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(CV.data) });
   if (!r.ok) throw new Error(await r.text());
-  return { blob: await r.blob(), filename: r.headers.get("X-Filename") || "CV.pdf", pages: +r.headers.get("X-Pages") || 1 };
+  return { blob: await r.blob(), filename: r.headers.get("X-Filename") || "CV.pdf", pages: +r.headers.get("X-Pages") || 1,
+           compact: +r.headers.get("X-Compact") || 0, overflow: r.headers.get("X-Overflow") === "1" };
 }
 async function refreshPreview() {
   const seq = ++previewSeq;
   $("#preview-state").textContent = "mise à jour…";
   try {
-    const { blob, pages } = await pdfBlob();
+    const { blob, pages, compact, overflow } = await pdfBlob();
     if (seq !== previewSeq) return;
     const old = previewUrl;
     previewUrl = URL.createObjectURL(blob);
@@ -380,9 +424,13 @@ async function refreshPreview() {
     if (old) setTimeout(() => URL.revokeObjectURL(old), 2000);
     $("#preview-state").textContent = "";
     const pc = $("#page-count");
-    pc.textContent = pages > 1 ? `${pages} pages` : "1 page";
-    pc.className = "page-count" + (pages > 1 ? " warn" : "");
-    pc.title = pages > 1 ? "Pour un stage ou un premier poste, vise une seule page : raccourcis les puces, garde les expériences les plus pertinentes." : "Une page : parfait pour un stage ou un premier poste";
+    const max = CV.data.max_pages === 2 ? 2 : 1;
+    pc.textContent = (pages > 1 ? `${pages} pages` : "1 page") + (overflow ? " : trop long" : compact ? " · resserré" : "");
+    pc.className = "page-count" + (overflow || compact >= 0.75 ? " warn" : "");
+    pc.title = overflow ? `Même resserré au maximum, le contenu ne tient pas sur ${max} page${max > 1 ? "s" : ""} : raccourcis les puces, garde les expériences les plus pertinentes` + (max === 1 ? ", ou autorise une deuxième page." : ".")
+      : compact >= 0.75 ? "Le CV tient, mais le texte a dû être nettement réduit : raccourcis un peu le contenu pour qu'il reste confortable à lire."
+      : compact ? "Marges et espacements resserrés automatiquement pour tenir sur " + (max === 1 ? "une page." : "deux pages.")
+      : pages > 1 ? "Deux pages autorisées. Pour un stage ou un premier poste, une seule page reste conseillée." : "Une page : parfait pour un stage ou un premier poste";
   } catch (e) { $("#preview-state").textContent = "erreur d'aperçu"; }
 }
 
@@ -411,6 +459,7 @@ function input(obj, f, { onInput } = {}) {
   if (f.ph) i.placeholder = f.ph;
   if (f.rows) i.rows = f.rows;
   i.value = obj[f.key] || "";
+  if (!f.type || f.type === "textarea") { i.spellcheck = true; i.lang = CV.data.lang === "en" ? "en" : "fr"; }  // soulignement du navigateur
   i.addEventListener("input", () => { obj[f.key] = i.value; onInput?.(); changed(); });
   wrap.append(i);
   return wrap;
@@ -598,7 +647,7 @@ function layoutSection() {
   const lang = el("select");
   [["fr", "Français"], ["en", "English"]].forEach(([v, t]) => lang.add(new Option(t, v)));
   lang.value = CV.data.lang || "fr";
-  lang.onchange = () => { CV.data.lang = lang.value; changed(); };
+  lang.onchange = () => { CV.data.lang = lang.value; changed({ structure: true }); };
   langF.append(lang);
   grid.append(langF);
   body.append(grid, el("div", "field", "Ordre conseillé"));
@@ -664,7 +713,7 @@ $("#photo-file").onchange = () => {
 /* ---------- comparaison avec une offre ---------- */
 const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 function cvText() {
-  const { photo, accent, section_order, ...rest } = CV.data;
+  const { photo, accent, section_order, max_pages, lang_variant, ...rest } = CV.data;
   return norm(JSON.stringify(rest).replace(/\\n/g, " "));
 }
 function hasSkill(text, skill) {
@@ -873,6 +922,120 @@ $("#ats-check").onclick = async () => {
 };
 $("#ats-close").onclick = () => $("#ats-dialog").close();
 
+/* ---------- correcteur (LanguageTool) ---------- */
+let ISSUES = [];
+const dictWords = () => { try { return JSON.parse(store.get("cv-dict") || "[]"); } catch { return []; } };
+const withoutPhoto = () => ({ ...CV.data, photo: null });
+function fieldOf(path) {
+  let holder = CV.data;
+  for (const k of path.slice(0, -1)) holder = holder?.[k];
+  return [holder, path[path.length - 1]];
+}
+async function runCheck() {
+  $("#check-intro").textContent = "";
+  $("#check-list").replaceChildren(el("div", "muted", "Vérification en cours…"));
+  try {
+    await flushSave();
+    const r = await api("/api/cv/check", { method: "POST", body: JSON.stringify({ data: withoutPhoto(), ignore: dictWords() }) });
+    ISSUES = r.issues;
+    renderIssues(r.language);
+  } catch (e) { $("#check-list").replaceChildren(el("div", "checklist", null)); $("#check-list").firstChild.append(el("div", "warn", e.message)); }
+}
+let checkLang = "fr";
+function renderIssues(language) {
+  if (language) checkLang = language;
+  const langName = checkLang === "fr" ? "français" : checkLang === "en-GB" ? "anglais britannique" : "anglais américain";
+  $("#check-intro").textContent = (ISSUES.length ? `${ISSUES.length} point${ISSUES.length > 1 ? "s" : ""} à regarder` : "Aucune faute détectée")
+    + ` — vérification en ${langName} (langue du CV, réglable dans « Mise en page »). Clique sur une proposition verte pour l'appliquer.`;
+  if (!ISSUES.length) {
+    const ok = el("div", "checklist"); ok.append(el("div", "ok", "Rien à corriger : orthographe et grammaire sont bonnes."));
+    return $("#check-list").replaceChildren(ok);
+  }
+  $("#check-list").replaceChildren(...ISSUES.map(issue => {
+    const [holder, key] = fieldOf(issue.path);
+    const text = String(holder?.[key] ?? "");
+    const at = text.substr(issue.offset, issue.length) === issue.bad ? issue.offset : text.indexOf(issue.bad);
+    const box = el("div", "issue");
+    const where = el("div", "where");
+    where.append(el("span", "kind " + issue.kind, issue.kind), el("span", null, issue.label));
+    const ctx = el("div", "ctx");
+    if (at >= 0) {
+      const flat = s => s.replace(/\s+/g, " ");
+      ctx.append((at > 60 ? "…" : "") + flat(text.slice(Math.max(0, at - 60), at)), el("mark", null, issue.bad),
+                 flat(text.slice(at + issue.length, at + issue.length + 60)) + (text.length > at + issue.length + 60 ? "…" : ""));
+    } else ctx.append(el("mark", null, issue.bad));
+    const fixes = el("div", "fixes");
+    issue.replacements.forEach(value => {
+      const b = el("button", "fix", value === "" ? "(supprimer)" : value);
+      b.title = "Remplacer par cette proposition";
+      b.onclick = () => applyFix(issue, value);
+      fixes.append(b);
+    });
+    const skip = el("button", "btn-ghost", "Ignorer");
+    skip.onclick = () => { ISSUES = ISSUES.filter(x => x !== issue); renderIssues(); };
+    fixes.append(skip);
+    if (issue.kind === "orthographe") {
+      const learn = el("button", "btn-ghost", "Ce mot est correct");
+      learn.title = "Ne plus signaler ce mot (nom propre, technologie, mot étranger…)";
+      learn.onclick = () => {
+        store.set("cv-dict", JSON.stringify([...new Set([...dictWords(), issue.bad.toLowerCase()])]));
+        ISSUES = ISSUES.filter(x => !(x.kind === "orthographe" && x.bad.toLowerCase() === issue.bad.toLowerCase()));
+        renderIssues();
+      };
+      fixes.append(learn);
+    }
+    box.append(where, ctx, el("div", null, issue.message), fixes);
+    return box;
+  }));
+}
+function applyFix(issue, value) {
+  const [holder, key] = fieldOf(issue.path);
+  const text = String(holder?.[key] ?? "");
+  const at = text.substr(issue.offset, issue.length) === issue.bad ? issue.offset : text.indexOf(issue.bad);
+  ISSUES = ISSUES.filter(x => x !== issue);
+  if (!holder || at < 0) { toast("Ce passage a changé depuis la vérification : clique sur « Revérifier »"); return renderIssues(); }
+  holder[key] = text.slice(0, at) + value + text.slice(at + issue.length);
+  const delta = value.length - issue.length, same = JSON.stringify(issue.path);
+  ISSUES.forEach(x => { if (JSON.stringify(x.path) === same && x.offset > at) x.offset += delta; });
+  changed({ structure: true });
+  renderIssues();
+}
+$("#cv-check").onclick = () => { $("#check-dialog").showModal(); runCheck(); };
+$("#check-again").onclick = runCheck;
+$("#check-close").onclick = () => $("#check-dialog").close();
+
+/* ---------- traduction en anglais (DeepL) ---------- */
+function showKeyBox(show) {
+  $("#tr-key-box").classList.toggle("hidden", !show);
+  $("#tr-key-box").style.display = show ? "flex" : "none";
+  $("#tr-change-key").classList.toggle("hidden", show);
+}
+$("#cv-translate").onclick = async () => {
+  if (CV.data.lang === "en") return toast("Ce CV est déjà en anglais : ouvre la version française pour la traduire");
+  $("#tr-state").textContent = ""; $("#tr-key").value = ""; $("#tr-go").disabled = false;
+  const { deepl } = await api("/api/cv/lang").catch(() => ({ deepl: false }));
+  showKeyBox(!deepl);
+  $("#tr-dialog").showModal();
+};
+$("#tr-change-key").onclick = () => showKeyBox(true);
+$("#tr-close").onclick = () => $("#tr-dialog").close();
+$("#tr-go").onclick = async () => {
+  const key = $("#tr-key").value.trim(), needKey = !$("#tr-key-box").classList.contains("hidden");
+  if (needKey && !key) return $("#tr-state").textContent = "Colle d'abord ta clé DeepL.";
+  $("#tr-go").disabled = true; $("#tr-state").textContent = "Traduction en cours…";
+  try {
+    if (needKey) await api("/api/config", { method: "PUT", body: JSON.stringify({ deepl_key: key }) });
+    await flushSave();
+    const { data, chars } = await api("/api/cv/translate", { method: "POST", body: JSON.stringify({ data: CV.data, variant: $("#tr-variant").value }) });
+    const c = await api("/api/cvs", { method: "POST", body: JSON.stringify({ name: `${CV.name} (EN)`, data, job_id: CV.job_id }) });
+    await loadList(c.id);
+    await openCv(c.id);
+    $("#tr-dialog").close();
+    toast(`Copie en anglais créée (${chars} caractères traduits) : relis-la, puis « Corriger les fautes »`);
+  } catch (e) { $("#tr-state").textContent = e.message; }
+  $("#tr-go").disabled = false;
+};
+
 /* ---------- style et couleur (barre d'aperçu) ---------- */
 const SWATCHES = ["#1f4e79", "#0f766e", "#334155", "#7c2d12", "#6d28d9", "#9f1239"];
 function renderStyleBar() {
@@ -881,6 +1044,8 @@ function renderStyleBar() {
     b.classList.toggle("on", b.dataset.style === style);
     b.onclick = () => { CV.data.style = b.dataset.style; renderStyleBar(); changed(); };
   });
+  $("#two-pages").checked = CV.data.max_pages === 2;
+  $("#two-pages").onchange = e => { CV.data.max_pages = e.target.checked ? 2 : 1; changed(); };
   const custom = el("label", "swatch swatch-custom" + (SWATCHES.includes(accent) ? "" : " on"));
   custom.title = "Autre couleur";
   const picker = el("input"); picker.type = "color"; picker.value = accent;

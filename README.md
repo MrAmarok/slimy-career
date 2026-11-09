@@ -5,8 +5,18 @@ les stocke dans une base SQLite (`jobs.db`) et les affiche dans un kanban.
 
 ## Installation
 
+Avec [uv](https://docs.astral.sh/uv/) :
+
 ```bash
-uv venv .venv && uv pip install -r requirements.txt   # ou: python -m venv .venv && .venv/bin/pip install -r requirements.txt
+uv venv .venv
+uv pip install -r requirements.txt
+```
+
+Ou avec `venv` / `pip` :
+
+```bash
+python -m venv .venv
+.venv/bin/pip install -r requirements.txt
 ```
 
 ## Utilisation
@@ -30,12 +40,23 @@ uv venv .venv && uv pip install -r requirements.txt   # ou: python -m venv .venv
    - cartes triées par défaut de la plus récente à la plus ancienne ; autres tris : pays puis ville, entreprise, ville, titre
    - onglet « Entreprises » : nombre d'offres et de candidatures par entreprise (clic = filtre le kanban)
    - bouton « Chercher des offres » pour lancer le scraping depuis l'interface
+   - bouton « Ajouter une offre » : saisir à la main une offre trouvée ailleurs ou une candidature spontanée (seul le titre
+     est obligatoire, lien optionnel) ; compétences, catégorie et pays sont détectés comme pour les autres offres (site « manuel »)
 
 ## Éditeur de CV (onglet « CV », http://localhost:5000/cv)
 
 - sections : informations (+ photo), profil, expérience pro, projets, formation, compétences techniques
   (par catégorie), soft skills, langues, certifications, centres d'intérêt ; ordre des sections réglable
 - aperçu PDF en direct, enregistrement automatique (table `cvs` de `jobs.db`), plusieurs CV possibles
+- « Corriger les fautes » : orthographe, grammaire et accords de tout le CV vérifiés par LanguageTool (gratuit, sans clé),
+  chaque faute est montrée dans sa phrase avec des propositions à appliquer en un clic ; « Ce mot est correct » pour ne
+  plus signaler un nom propre ou une technologie. La vérification se fait dans la langue du CV (français ou anglais).
+  Le texte rédigé est envoyé à api.languagetool.org ; pour tout garder en local, lancer un serveur LanguageTool
+  et mettre son adresse dans `LANGUAGETOOL_URL`.
+- « Traduire en anglais » : crée une copie du CV traduite par DeepL (britannique ou américain), l'original n'est pas
+  modifié ; noms, liens, entreprises, écoles et technologies ne sont pas touchés, les niveaux de langue passent par une
+  table fixe (« Courant » → « Fluent »). Clé « DeepL API Free » à coller au premier usage (`deepl_key` dans
+  `config.toml` ou variable `DEEPL_API_KEY`).
 - « Adapter à une offre » : compare le CV aux compétences d'une offre du tableau, ajoute celles qui
   manquent en un clic et crée une copie du CV dédiée à cette offre (bouton « Adapter mon CV » dans le détail d'une offre)
 - « Exporter en PDF » : PDF généré par `cv_pdf.py` (reportlab), pensé pour les logiciels RH (ATS) :
@@ -44,7 +65,10 @@ uv venv .venv && uv pip install -r requirements.txt   # ou: python -m venv .venv
   Trois styles (barre d'aperçu) : « Moderne » (bandeau de couleur, titres avec barre, dates en pastille),
   « Tech » (inspiré des CV informatiques une page type Jake's Resume : police à empattements, en-tête centré,
   titres en capitales soulignés, compétences en lignes « Catégorie : … ») et « Classique » (sobre). Les décorations
-  sont des formes dessinées : le texte lu par les ATS est le même. Le nombre de pages est affiché (viser 1 page pour un stage).
+  sont des formes dessinées : le texte lu par les ATS est le même. Le nombre de pages est affiché.
+- une page par défaut : si le contenu déborde, la mise en page est resserrée automatiquement, juste ce qu'il faut
+  (marges, espacements et interligne d'abord, puis taille du texte jusqu'à -20 %). Si ça ne tient toujours pas,
+  l'aperçu l'indique (« trop long »). Cocher « 2 pages autorisées » (barre d'aperçu) pour permettre une deuxième page.
 - ordres de sections conseillés (Mise en page) : « Étudiant / stage » (formation d'abord, par défaut),
   « Junior tech » (compétences d'abord), « Expérimenté » (expérience d'abord) ; catégories de compétences
   courantes en informatique ajoutables en un clic (Langages, Frameworks, Bases de données, DevOps / Cloud…)
