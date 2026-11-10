@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: candidatures
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/candidatures}
+    username: ${DATABASE_USER:candidatures}
+    password: ${DATABASE_PASSWORD:candidatures}
+  servlet:
+    multipart:
+      max-file-size: 20MB       # import de CV en PDF
+      max-request-size: 21MB
+
+server:
+  port: ${PORT:8080}
+  # derrière Cloudflare Tunnel : fait confiance aux en-têtes X-Forwarded-* (HTTPS, adresse du client)
+  forward-headers-strategy: framework
+  tomcat:
+    max-http-form-post-size: 25MB
+    max-swallow-size: 25MB
+  servlet:
+    session:
+      timeout: 30d
+      cookie:
+        http-only: true
+        same-site: lax
+  compression:
+    enabled: true
+    mime-types: application/json,text/html,text/css,application/javascript,text/plain
+
+app:
+  # premier compte, créé au démarrage s'il n'y a encore aucun utilisateur
+  admin:
+    username: ${APP_ADMIN_USERNAME:admin}
+    password: ${APP_ADMIN_PASSWORD:}
+  # scripts Python de recherche d'offres (voir scraper/)
+  scraper:
+    python: ${SCRAPER_PYTHON:python3}
+    script: ${SCRAPER_SCRIPT:../scraper/scrape.py}
+  # clés communes à tous les comptes ; chaque utilisateur peut mettre la sienne dans ses paramètres
+  keys:
+    serpapi: ${SERPAPI_KEY:}
+    deepl: ${DEEPL_API_KEY:}
+  languagetool-url: ${LANGUAGETOOL_URL:https://api.languagetool.org/v2/check}
+
+logging:
+  level:
+    # les polices standard du PDF ne sont pas embarquées : l'avertissement « fallback font » est sans objet
+    org.apache.pdfbox.pdmodel.font: ERROR
