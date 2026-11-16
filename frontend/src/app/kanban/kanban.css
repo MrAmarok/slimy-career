@@ -1,0 +1,118 @@
+:host { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* ---------- en-tête ---------- */
+header { display: flex; align-items: center; gap: 16px; padding: 0 20px; height: 60px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.logo { font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.logo span { width: 26px; height: 26px; border-radius: 7px; background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 14px; }
+.tabs { display: flex; gap: 2px; background: var(--soft); padding: 3px; border-radius: 9px; }
+.tabs a { color: var(--muted); padding: 5px 12px; border-radius: 7px; font-weight: 500; white-space: nowrap; }
+.tabs a:hover { color: var(--text); }
+.tabs a.active { background: #fff; color: var(--text); box-shadow: var(--shadow); }
+.search { position: relative; flex: 1; max-width: 420px; margin-left: auto; }
+.search input { width: 100%; padding-left: 34px; background: var(--soft); border-color: transparent; }
+.search input:focus { background: #fff; }
+.search::before { content: "⌕"; position: absolute; left: 11px; top: 50%; transform: translateY(-52%); color: var(--faint); font-size: 17px; }
+
+/* ---------- barre de filtres ---------- */
+.filterbar { display: flex; align-items: center; gap: 10px; padding: 12px 20px 0; flex-wrap: wrap; }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+.active-filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 8px 20px 0; }
+.af { display: inline-flex; align-items: center; gap: 6px; background: var(--soft); border-radius: 6px; padding: 3px 4px 3px 9px; font-size: 12px; }
+.af b { font-weight: 500; color: var(--muted); }
+.af button { border: none; background: none; padding: 0 5px; color: var(--muted); font-size: 15px; line-height: 1; }
+.af button:hover { color: var(--text); }
+.count-badge { background: var(--accent); color: #fff; border-radius: 999px; font-size: 11px; padding: 0 6px; margin-left: 4px; }
+
+/* ---------- mise en page ---------- */
+.layout { flex: 1; display: flex; min-height: 0; }
+.content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+aside { width: 260px; flex-shrink: 0; border-right: 1px solid var(--line); overflow-y: auto; padding: 8px 16px 20px; }
+aside details { border-bottom: 1px solid var(--line); padding: 10px 0; }
+aside details:last-of-type { border-bottom: none; }
+aside summary { cursor: pointer; font-weight: 600; font-size: 13px; list-style: none; display: flex; justify-content: space-between; align-items: center; padding: 2px 0; }
+aside summary::-webkit-details-marker { display: none; }
+aside summary::after { content: "›"; color: var(--faint); font-size: 18px; transform: rotate(90deg); transition: transform .15s; }
+aside details:not([open]) summary::after { transform: rotate(0); }
+aside .field { margin-top: 10px; }
+aside label.lbl { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+aside select, aside input[type=search] { width: 100%; }
+.checklist { display: flex; flex-direction: column; max-height: 210px; overflow-y: auto; margin-top: 8px; }
+.checklist label { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.checklist label:hover { background: var(--soft); }
+.checklist .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.checklist .n { color: var(--faint); font-size: 12px; }
+.checklist input { margin: 0; accent-color: var(--accent); }
+
+/* ---------- tableau kanban ---------- */
+.toolbar { display: flex; align-items: center; gap: 10px; padding: 12px 20px; }
+.toolbar select { padding: 5px 8px; font-size: 13px; }
+#board { flex: 1; display: flex; gap: 14px; padding: 0 20px 20px; overflow-x: auto; align-items: flex-start; }
+.column { background: var(--soft); border-radius: 12px; width: 280px; min-width: 280px; max-height: 100%; display: flex; flex-direction: column; }
+.column-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px; font-weight: 600; font-size: 13px; }
+.column-head .n { color: var(--muted); font-weight: 500; margin-left: auto; background: #fff; border-radius: 999px; padding: 0 8px; font-size: 12px; }
+.cards { padding: 4px 10px 10px; overflow-y: auto; min-height: 80px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.no-results { margin: 0 20px 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; display: flex; align-items: center; gap: 12px; background: #fffbeb; border-color: #fde68a; }
+.empty { color: var(--faint); font-size: 12px; text-align: center; padding: 18px 0; border: 1px dashed var(--line-strong); border-radius: 8px; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 11px 12px; cursor: pointer; box-shadow: var(--shadow); transition: border-color .15s, box-shadow .15s; }
+.card:hover { border-color: var(--line-strong); box-shadow: 0 4px 12px rgba(16,24,40,.08); }
+.card.selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.card { position: relative; }
+.card .pick { position: absolute; top: 9px; right: 9px; width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--line-strong); background: #fff; display: grid; place-items: center; font-size: 12px; color: #fff; opacity: 0; transition: opacity .12s; padding: 0; }
+.card:hover .pick, :host(.picking) .card .pick { opacity: 1; }
+.card .pick:hover { border-color: var(--accent); background: #fff; }
+.card-title { padding-right: 22px; }
+.card.picked { background: var(--accent-soft); border-color: var(--accent); }
+.card.picked .pick { opacity: 1; background: var(--accent); border-color: var(--accent); }
+.card.group-drag { opacity: .35; }
+.column-head .select-all { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--accent); background: none; border: none; padding: 0 4px; opacity: 0; }
+.column:hover .select-all, :host(.picking) .select-all { opacity: 1; }
+.column-head .select-all + .n { margin-left: 0; }
+.bulkbar { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); width: max-content; background: var(--text); color: #fff; border-radius: 12px; padding: 8px 8px 8px 16px; display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-lg); z-index: 30; flex-wrap: wrap; max-width: calc(100vw - 24px); }
+.bulkbar .sep { width: 1px; align-self: stretch; background: rgba(255,255,255,.2); }
+.bulkbar .lbl { color: #9ca3af; font-size: 12px; }
+.bulkbar button { background: transparent; border-color: transparent; color: #fff; padding: 5px 9px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.bulkbar button:hover { background: rgba(255,255,255,.12); }
+.bulkbar .del { color: #fca5a5; }
+.card-title { font-weight: 600; font-size: 13.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-meta { color: var(--muted); font-size: 12px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-foot { display: flex; align-items: center; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
+.card-date { margin-left: auto; color: var(--faint); font-size: 11px; white-space: nowrap; }
+
+/* glisser-déposer (Angular CDK) : l'emplacement d'origine s'estompe, la carte déplacée penche un peu */
+.card.cdk-drag-placeholder { opacity: .35; }
+.card.cdk-drag-preview { rotate: 1.5deg; box-shadow: var(--shadow-lg) !important; }
+.card.cdk-drag-animating { transition: transform .15s ease; }
+
+/* indicateur de recherche en arrière-plan */
+.scrape-status { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 999px; padding: 4px 6px 4px 12px; font-size: 13px; max-width: 460px; min-width: 0; background: #fff; }
+.scrape-status .txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; min-width: 0; }
+.scrape-status .txt b { font-weight: 600; }
+.scrape-status .new { background: var(--accent-soft); color: var(--accent-text); border-radius: 999px; padding: 1px 8px; font-weight: 600; white-space: nowrap; font-size: 12px; }
+.scrape-status button { padding: 3px 10px; font-size: 12px; border-radius: 999px; }
+.scrape-status.done { border-color: #bbf7d0; background: #f0fdf4; }
+.spinner { width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--accent-soft); border-top-color: var(--accent); animation: spin .8s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.progress { height: 3px; background: var(--accent-soft); position: relative; flex-shrink: 0; }
+.progress div { position: absolute; inset: 0 auto 0 0; background: var(--accent); transition: width .4s ease; }
+.log-panel { position: fixed; top: 64px; right: 20px; width: min(520px, calc(100vw - 24px)); background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-lg); z-index: 25; padding: 12px; }
+.log-panel pre { margin: 8px 0 0; white-space: pre-wrap; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; max-height: 320px; overflow-y: auto; background: var(--soft); padding: 10px 12px; border-radius: 8px; }
+@keyframes fresh { from { background: #eff6ff; border-color: var(--accent); } }
+.card.fresh { animation: fresh 2.5s ease-out; }
+
+.toast { position: fixed; bottom: 20px; left: 20px; background: var(--text); color: #fff; padding: 10px 16px; border-radius: 10px; box-shadow: var(--shadow-lg); z-index: 50; font-size: 13px; opacity: 0; transform: translateY(8px); transition: all .2s; pointer-events: none; }
+.toast.show { opacity: 1; transform: none; }
+
+@media (max-width: 860px) {
+  header { gap: 10px; padding: 0 12px; flex-wrap: wrap; height: auto; padding-top: 10px; padding-bottom: 10px; }
+  .search { order: 3; max-width: none; flex-basis: 100%; }
+  .scrape-status { order: 4; flex-basis: 100%; max-width: none; }
+  .bulkbar .sep { display: none; }
+  .log-panel { top: auto; bottom: 12px; right: 12px; }
+  .filterbar { flex-wrap: nowrap; }
+  .pills { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .pill { white-space: nowrap; }
+  .logo b { display: none; }
+  aside { position: fixed; z-index: 15; top: 0; bottom: 0; left: 0; background: #fff; box-shadow: var(--shadow-lg); }
+  .filterbar, .toolbar, .active-filters { padding-left: 12px; padding-right: 12px; }
+  #board { padding-left: 12px; padding-right: 12px; }
+}

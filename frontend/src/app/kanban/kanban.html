@@ -1,0 +1,278 @@
+<header>
+  <div class="logo"><span>✓</span><b>Candidatures</b></div>
+  <nav class="tabs">
+    <a routerLink="/" fragment="kanban" [class.active]="view() === 'kanban'">Tableau</a>
+    <a routerLink="/" fragment="entreprises" [class.active]="view() === 'entreprises'">Entreprises</a>
+    <a routerLink="/" fragment="parametres" [class.active]="view() === 'parametres'">Paramètres</a>
+    <a routerLink="/cv">CV</a>
+  </nav>
+  <div class="search"><input #searchInput type="search" placeholder="Rechercher un poste, une entreprise, une compétence…  ( / )" [(ngModel)]="q" /></div>
+  @if (store.scrapeShown() && store.scrape(); as s) {
+    <div class="scrape-status" [class.done]="!s.running">
+      @if (s.running) {
+        <span class="spinner"></span>
+      }
+      <span class="txt" title="Voir le détail" (click)="store.logOpen.set(!store.logOpen())">
+        @if (s.running && s.step; as step) {
+          <b>{{ siteName(step.site) }}</b>{{ ' · « ' + step.query + ' » à ' + step.location + ' · ' + step.index + '/' + step.total + ' terminées' }}
+        } @else if (s.running) {
+          Démarrage de la recherche…
+        } @else {
+          {{ s.stopped ? 'Recherche arrêtée' : '✓ Recherche terminée' }}
+        }
+      </span>
+      @if (s.new_jobs) {
+        <span class="new">+{{ s.new_jobs }} nouvelle{{ plural(s.new_jobs) }}</span>
+      }
+      @if (s.running) {
+        <button class="btn-ghost" (click)="store.stopScrape()">Arrêter</button>
+      } @else {
+        <button class="btn-ghost" title="Masquer" (click)="store.dismissScrape()">×</button>
+      }
+    </div>
+  }
+  <button title="Ajouter à la main une offre trouvée ailleurs (ou une candidature spontanée)" (click)="openAdd()">+ Ajouter une offre</button>
+  <button class="btn-primary" [disabled]="store.scrapeRunning()" (click)="openSearch()">+ Chercher des offres</button>
+  <app-user-menu />
+</header>
+@if (store.scrapeRunning()) {
+  <div class="progress"><div [style.width.%]="progress()"></div></div>
+}
+<div class="log-panel" [class.hidden]="!store.logOpen()">
+  <div style="display:flex; align-items:center"><b>Détail de la recherche</b><span class="spacer"></span><button class="btn-ghost" (click)="store.logOpen.set(false)">×</button></div>
+  <pre #logEl>{{ log() }}</pre>
+</div>
+
+@if (view() !== 'parametres') {
+  <div>
+    <div class="filterbar">
+      <button (click)="toggleFilters()">Filtres@if (filterCount()) {<span class="count-badge">{{ filterCount() }}</span>}</button>
+      <div class="pills">
+        <button class="pill" [class.on]="!cats().size" (click)="clearCats()">Toutes</button>
+        @for (c of catPills(); track c.value) {
+          <button class="pill" [class.on]="cats().has(c.value)" (click)="toggle(cats, c.value)">{{ c.value }}<span class="n">{{ c.n }}</span></button>
+        }
+      </div>
+    </div>
+    @if (activeFilters().length) {
+      <div class="active-filters">
+        @for (f of activeFilters(); track f.label + '\n' + f.value) {
+          <span class="af"><b>{{ f.label }}</b>{{ f.value }}<button title="Retirer ce filtre" (click)="f.clear()">×</button></span>
+        }
+        @if (activeFilters().length > 1) {
+          <button class="btn-ghost small" style="padding:2px 8px" (click)="resetFilters()">Tout effacer</button>
+        }
+      </div>
+    }
+  </div>
+}
+
+<div class="layout">
+  <aside [class.hidden]="view() === 'parametres' || !filtersOpen()">
+    <details open>
+      <summary>Lieu</summary>
+      <div class="field">
+        <label class="lbl" for="f-country">Pays</label>
+        <select id="f-country" [ngModel]="country()" (ngModelChange)="setCountry($event)">
+          <option value="">Tous</option>
+          @for (o of countryOptions(); track o.value) {
+            <option [value]="o.value">{{ o.value }} ({{ o.n }})</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label class="lbl" for="f-city">Ville</label>
+        <select id="f-city" [(ngModel)]="city">
+          <option value="">Toutes</option>
+          @for (o of cityOptions(); track o.value) {
+            <option [value]="o.value">{{ o.value }} ({{ o.n }})</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label class="lbl">Zone de recherche</label>
+        <div class="checklist">
+          @for (o of zoneList(); track o.value) {
+            <label [title]="o.value">
+              <input type="checkbox" [checked]="zones().has(o.value)" (change)="toggle(zones, o.value, $any($event.target).checked)" />
+              <span class="name">{{ o.value }}</span><span class="n">{{ o.n }}</span>
+            </label>
+          } @empty {
+            <span class="muted small">rien pour l'instant</span>
+          }
+        </div>
+      </div>
+    </details>
+    <details>
+      <summary>Entreprise et site</summary>
+      <div class="field">
+        <label class="lbl" for="f-company">Entreprise</label>
+        <select id="f-company" [(ngModel)]="company">
+          <option value="">Toutes</option>
+          @for (o of companyOptions(); track o.value) {
+            <option [value]="o.value">{{ o.value }} ({{ o.n }})</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label class="lbl" for="f-source">Site</label>
+        <select id="f-source" [(ngModel)]="source">
+          <option value="">Tous</option>
+          @for (o of sourceOptions(); track o.value) {
+            <option [value]="o.value">{{ o.value }} ({{ o.n }})</option>
+          }
+        </select>
+      </div>
+    </details>
+    <details>
+      <summary>Recherches</summary>
+      <div class="checklist">
+        @for (o of tagList(); track o.value) {
+          <label [title]="o.value">
+            <input type="checkbox" [checked]="tags().has(o.value)" (change)="toggle(tags, o.value, $any($event.target).checked)" />
+            <span class="name">{{ o.value }}</span><span class="n">{{ o.n }}</span>
+          </label>
+        } @empty {
+          <span class="muted small">rien pour l'instant</span>
+        }
+      </div>
+    </details>
+    <details>
+      <summary>Compétences</summary>
+      <div class="field"><input type="search" placeholder="Filtrer la liste…" [(ngModel)]="skillSearch" /></div>
+      <div class="checklist">
+        @for (o of skillList(); track o.value) {
+          <label [title]="o.value">
+            <input type="checkbox" [checked]="skills().has(o.value)" (change)="toggle(skills, o.value, $any($event.target).checked)" />
+            <span class="name">{{ o.value }}</span><span class="n">{{ o.n }}</span>
+          </label>
+        } @empty {
+          <span class="muted small">rien pour l'instant</span>
+        }
+      </div>
+    </details>
+  </aside>
+
+  <div class="content">
+    @if (view() !== 'parametres') {
+      <div class="toolbar">
+        <span class="muted small">{{ total() }}</span>
+        <span class="spacer"></span>
+        @if (view() === 'kanban') {
+          <label class="muted small" for="sort">Trier par</label>
+          <select id="sort" [(ngModel)]="sort">
+            <option value="date">Plus récentes</option>
+            <option value="country-city">Pays puis ville</option>
+            <option value="city">Ville</option>
+            <option value="company">Entreprise A → Z</option>
+            <option value="company-desc">Entreprise Z → A</option>
+            <option value="title">Titre</option>
+          </select>
+        }
+      </div>
+      @if (noResults()) {
+        <div class="no-results">
+          <span>Aucune offre ne correspond à ces filtres.</span>
+          <button (click)="resetFilters()">Effacer les filtres</button>
+        </div>
+      }
+    }
+
+    <main id="board" cdkDropListGroup [class.hidden]="view() !== 'kanban'">
+      @for (col of columns(); track col.key) {
+        <section class="column">
+          <div class="column-head">
+            <span class="dot" [style.background]="col.color"></span>
+            <span>{{ col.label }}</span>
+            @if (col.cards.length) {
+              <button class="select-all" (click)="toggleColumn(col)">{{ allPicked(col) ? 'Désélectionner' : 'Tout sélectionner' }}</button>
+            }
+            <span class="n">{{ col.cards.length }}</span>
+          </div>
+          <div class="cards" cdkDropList cdkDropListSortingDisabled [cdkDropListData]="col.key" (cdkDropListDropped)="onDrop($event)">
+            @for (c of col.cards; track c.job.id) {
+              <div
+                class="card"
+                cdkDrag
+                [cdkDragData]="c.job.id"
+                [cdkDragStartDelay]="dragDelay"
+                [class.selected]="store.currentId() === c.job.id"
+                [class.fresh]="store.freshIds().has(c.job.id)"
+                [class.picked]="picked().has(c.job.id)"
+                [class.group-drag]="groupDrag() && picked().has(c.job.id)"
+                (cdkDragStarted)="onDragStart(c.job.id)"
+                (cdkDragEnded)="onDragEnd()"
+                (click)="onCardClick($event, c.job)"
+              >
+                <button type="button" class="pick" title="Sélectionner" (click)="onPickClick($event, c.job)">✓</button>
+                <div class="card-title">{{ c.job.title }}</div>
+                <div class="card-meta">{{ c.meta }}</div>
+                <div class="card-foot">
+                  @for (cat of c.categories; track $index) {
+                    <span class="tag cat">{{ cat }}</span>
+                  }
+                  @for (skill of c.skills; track $index) {
+                    <span class="tag">{{ skill }}</span>
+                  }
+                  <span class="card-date">{{ c.date }}</span>
+                </div>
+              </div>
+            } @empty {
+              <div class="empty">Glisse une offre ici</div>
+            }
+          </div>
+        </section>
+      }
+    </main>
+
+    @if (view() === 'entreprises') {
+      <app-companies-table [jobs]="visible()" [statuses]="store.statuses()" [(sort)]="companySort" (pick)="showCompany($event)" />
+    }
+    @if (view() === 'parametres') {
+      <app-settings-tab />
+    }
+  </div>
+</div>
+
+<app-job-drawer />
+<app-search-drawer />
+<app-add-job-dialog />
+
+@if (picked().size; as n) {
+  <div class="bulkbar">
+    <b>{{ n }} sélectionnée{{ plural(n) }}</b>
+    <span class="sep"></span>
+    <span class="lbl">Déplacer vers</span>
+    <span style="display:flex; flex-wrap:wrap; gap:2px">
+      @for (s of store.statuses(); track s.key) {
+        <button (click)="bulkStatus(s.key)"><span class="dot" [style.background]="color(s.key)"></span>{{ s.label }}</button>
+      }
+    </span>
+    <span class="sep"></span>
+    <button class="del" (click)="bulkDelete()">Supprimer</button>
+    <button title="Désélectionner (Échap)" (click)="clearPicked()">×</button>
+  </div>
+}
+
+<div class="toast" [class.show]="store.toastShown()">{{ store.toastText() }}</div>
+
+<datalist id="dl-skills">
+  @for (v of store.meta().skills; track v) {
+    <option [value]="v"></option>
+  }
+</datalist>
+<datalist id="dl-tags">
+  @for (v of store.meta().tags; track v) {
+    <option [value]="v"></option>
+  }
+</datalist>
+<datalist id="dl-zones">
+  @for (v of zoneSuggestions(); track v) {
+    <option [value]="v"></option>
+  }
+</datalist>
+<datalist id="dl-cats">
+  @for (v of store.meta().categories; track v) {
+    <option [value]="v"></option>
+  }
+</datalist>
