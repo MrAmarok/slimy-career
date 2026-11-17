@@ -1,0 +1,176 @@
+<header>
+  <a class="logo" routerLink="/"><span>✓</span><b>Candidatures</b></a>
+  <nav class="tabs">
+    <a routerLink="/">Tableau</a>
+    <a routerLink="/" fragment="entreprises">Entreprises</a>
+    <a routerLink="/" fragment="parametres">Paramètres</a>
+    <a routerLink="/cv" class="active">CV</a>
+  </nav>
+  <span class="spacer"></span>
+  <app-user-menu />
+</header>
+
+<div class="layout">
+  <div class="editor">
+    <div class="cvbar">
+      <select title="Choisir un CV" [ngModel]="selectedId()" (ngModelChange)="selectCv($event)">
+        @for (c of cvs(); track c.id) {
+          <option [ngValue]="c.id">{{ c.name }}</option>
+        }
+      </select>
+      <button type="button" title="Nouveau CV vide" [disabled]="!store.cv()" (click)="newCv()">Nouveau</button>
+      <button type="button" title="Copier ce CV (pour l'adapter à une offre)" [disabled]="!store.cv()" (click)="duplicateCv()">Dupliquer</button>
+      <button type="button" title="Créer un CV à partir d'un PDF existant (tu peux aussi glisser le PDF sur la page)" (click)="pdfFile.click()">Importer un PDF</button>
+      <button type="button" title="Chercher les fautes d'orthographe et de grammaire dans tout le CV (LanguageTool)" [disabled]="!store.cv()" (click)="checkDialog.open()">Corriger les fautes</button>
+      <button type="button" title="Créer une copie de ce CV traduite en anglais (DeepL)" [disabled]="!store.cv()" (click)="translateDialog.open()">Traduire en anglais</button>
+      <button type="button" class="btn-ghost icon" title="Renommer" [disabled]="!store.cv()" (click)="renameCv()">Renommer</button>
+      <button type="button" class="btn-danger icon" title="Supprimer ce CV" [disabled]="!store.cv()" (click)="deleteCv()">Supprimer</button>
+      <span class="save-state" [class.ok]="store.saveState().ok">{{ store.saveState().text }}</span>
+    </div>
+
+    <div class="match" #matchBox>
+      <div class="head">
+        <span class="small muted nowrap">Adapter à une offre</span>
+        <input class="grow" list="dl-jobs" placeholder="Choisir une offre du tableau…" [value]="jobText()" (change)="jobInputChanged($any($event.target))" />
+        @if (matchedJob()) {
+          <button type="button" class="btn-ghost icon" title="Ne plus comparer" (click)="selectJob(null)">×</button>
+        }
+      </div>
+      @if (match(); as m) {
+        <div class="match-body">
+          <div class="row">
+            <span class="score">
+              @if (m.pct === null) {
+                Pas de compétences détectées dans cette offre
+              } @else {
+                {{ m.found.length }}/{{ m.total }} compétences de l'offre présentes dans ton CV ({{ m.pct }} %)
+              }
+            </span>
+          </div>
+          <div class="pills">
+            @for (s of m.found; track $index) {
+              <span class="pill ok">{{ s }}</span>
+            }
+            @for (s of m.missing; track $index) {
+              <button type="button" class="pill miss" title="Ajouter aux compétences techniques (seulement si tu la maîtrises !)" (click)="addSkill(s)">{{ s }}</button>
+            }
+          </div>
+          @if (m.missing.length) {
+            <div class="hint">Clique sur une compétence manquante pour l'ajouter. Pense aussi à reprendre les mots de l'offre dans ton titre, ton profil et tes missions.</div>
+          }
+          <div class="row">
+            <a class="small" [href]="m.job.link" target="_blank" rel="noopener">Voir l'offre ↗</a>
+            <span class="spacer"></span>
+            @if (m.canCopy) {
+              <button type="button" (click)="duplicate('CV — ' + (m.job.company || m.job.title), m.job.id)">Créer une copie du CV pour cette offre</button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (importNote(); as note) {
+      <div class="import-note">
+        <span class="grow">{{ note }}</span>
+        <button type="button" class="btn-ghost" title="Masquer" (click)="importNote.set(null)">×</button>
+      </div>
+    }
+
+    @if (store.cv()) {
+      @let data = store.data;
+      <div class="sections">
+        <app-info-section />
+        @for (key of data.section_order; track key) {
+          @switch (key) {
+            @case ('hard_skills') {
+              <app-skills-section />
+            }
+            @case ('languages') {
+              <app-cv-card key="languages" [title]="labels.languages" [count]="data.languages.length">
+                @for (l of data.languages; track l) {
+                  <div class="row">
+                    <input class="grow" placeholder="Langue" [ngModel]="l.name || ''" (ngModelChange)="l.name = $event; store.changed()" />
+                    <input class="grow" placeholder="Niveau (C1, courant, TOEIC 900…)" list="dl-levels" [ngModel]="l.level || ''" (ngModelChange)="l.level = $event; store.changed()" />
+                    <app-entry-controls [list]="data.languages" [index]="$index" />
+                  </div>
+                }
+                <button type="button" class="add" (click)="addLanguage()">+ Ajouter une langue</button>
+              </app-cv-card>
+            }
+            @case ('soft_skills') {
+              <app-cv-card key="soft_skills" [title]="labels.soft_skills" [count]="data.soft_skills.length">
+                <p class="hint">Mieux vaut 4-5 qualités illustrées dans tes expériences qu'une longue liste.</p>
+                <app-chip-editor [values]="data.soft_skills" placeholder="Autonomie, travail en équipe… (Entrée pour ajouter)" (valuesChange)="data.soft_skills = $event; store.changed()" />
+              </app-cv-card>
+            }
+            @case ('interests') {
+              <app-cv-card key="interests" [title]="labels.interests" [count]="data.interests.length">
+                <app-chip-editor [values]="data.interests" placeholder="Escalade, CTF, photo… (Entrée pour ajouter)" (valuesChange)="data.interests = $event; store.changed()" />
+              </app-cv-card>
+            }
+            @default {
+              <app-list-section [key]="key" />
+            }
+          }
+        }
+        <app-layout-section />
+      </div>
+    }
+  </div>
+
+  <div class="preview">
+    <div class="preview-bar">
+      <b>Aperçu</b>
+      @if (pageInfo(); as p) {
+        <span class="page-count" [class.warn]="p.warn" [title]="p.title">{{ p.text }}</span>
+      }
+      <label class="check small" title="Par défaut le CV est resserré automatiquement (marges, espacements, puis taille du texte) pour tenir sur une seule page. Coche pour l'autoriser à s'étendre sur une deuxième page.">
+        <input type="checkbox" [disabled]="!store.cv()" [checked]="maxPages() === 2" (change)="setMaxPages($any($event.target).checked)" /> 2 pages autorisées
+      </label>
+      <span class="preview-state">{{ previewState() }}</span>
+      <span class="spacer"></span>
+      <div class="seg" title="Style du CV">
+        @for (s of styles; track s.id) {
+          <button type="button" [class.on]="style() === s.id" [title]="s.title" [disabled]="!store.cv()" (click)="setStyle(s.id)">{{ s.label }}</button>
+        }
+      </div>
+      <div class="swatches" title="Couleur">
+        @if (store.cv()) {
+          @for (c of swatches; track c) {
+            <button type="button" class="swatch" [class.on]="c === accent()" [style.background]="c" [title]="c" (click)="setAccent(c)"></button>
+          }
+          <label class="swatch swatch-custom" [class.on]="!swatches.includes(accent())" title="Autre couleur">
+            <input type="color" [value]="accent()" (input)="setAccent($any($event.target).value)" />
+          </label>
+        }
+      </div>
+      <button type="button" title="Voir le texte tel qu'un logiciel de recrutement le lit" [disabled]="!store.cv()" (click)="atsCheck()">Vérifier la lecture ATS</button>
+      <button type="button" class="btn-primary" [disabled]="!store.cv()" (click)="exportPdf()">Exporter en PDF</button>
+    </div>
+    @if (previewSrc(); as src) {
+      <iframe title="Aperçu du CV" [src]="src"></iframe>
+    } @else {
+      <iframe title="Aperçu du CV"></iframe>
+    }
+  </div>
+</div>
+
+<app-ats-dialog #atsDialog />
+<app-check-dialog #checkDialog />
+<app-translate-dialog #translateDialog (created)="translated($event)" />
+
+<input #pdfFile type="file" accept="application/pdf,.pdf" class="hidden" (change)="pdfPicked(pdfFile)" />
+@if (dropHint()) {
+  <div class="drop-hint"><div>Dépose ton CV en PDF pour l'importer</div></div>
+}
+<datalist id="dl-jobs">
+  @for (j of jobs(); track j.id) {
+    <option [value]="jobLabel(j)"></option>
+  }
+</datalist>
+<datalist id="dl-levels">
+  @for (level of levels; track level) {
+    <option [value]="level"></option>
+  }
+</datalist>
+<div class="toast" [class.show]="store.toastVisible()">{{ store.toastText() }}</div>
