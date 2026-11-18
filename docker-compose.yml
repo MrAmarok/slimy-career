@@ -1,0 +1,56 @@
+# Déploiement : base PostgreSQL + application + tunnel Cloudflare.
+#
+#   cp .env.example .env    puis remplir les mots de passe
+#   docker compose up -d --build                       # application sur http://localhost:8080 (cette machine seulement)
+#   docker compose --profile tunnel up -d --build      # + accès depuis Internet par le tunnel Cloudflare (HTTPS)
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: candidatures
+      POSTGRES_USER: candidatures
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définis POSTGRES_PASSWORD dans .env}
+      TZ: ${TZ:-Europe/Paris}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U candidatures -d candidatures"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/candidatures
+      DATABASE_USER: candidatures
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      APP_ADMIN_USERNAME: ${APP_ADMIN_USERNAME:-admin}
+      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:?définis APP_ADMIN_PASSWORD dans .env}
+      DEEPL_API_KEY: ${DEEPL_API_KEY:-}
+      SERPAPI_KEY: ${SERPAPI_KEY:-}
+      TZ: ${TZ:-Europe/Paris}
+    ports:
+      # accessible seulement depuis cette machine ; l'accès extérieur passe par le tunnel
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+
+  # Tunnel Cloudflare : connexion sortante vers Cloudflare, qui sert l'application en HTTPS sur ton domaine.
+  # Dans Zero Trust > Networks > Tunnels, le « public hostname » doit pointer vers le service  http://app:8080
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - app
+
+volumes:
+  db-data:
