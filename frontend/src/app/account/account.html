@@ -1,0 +1,74 @@
+<header>
+  <a routerLink="/" class="logo">Candidatures</a>
+  <nav class="tabs">
+    <a routerLink="/">Tableau</a>
+    <a routerLink="/cv">CV</a>
+  </nav>
+  <span class="spacer"></span>
+  <app-user-menu />
+</header>
+
+<main>
+  <div class="inner">
+    <div>
+      <h2>Mon compte</h2>
+      <div class="muted">Connecté en tant que <b>{{ auth.user()?.username }}</b>{{ auth.user()?.admin ? ' (administrateur)' : '' }}.</div>
+    </div>
+
+    <section class="section">
+      <h3>Mot de passe</h3>
+      <form class="grid" (ngSubmit)="changePassword()">
+        <label>Mot de passe actuel<input type="password" name="current" [(ngModel)]="current" autocomplete="current-password" required></label>
+        <label>Nouveau mot de passe<input type="password" name="password" [(ngModel)]="password" autocomplete="new-password" minlength="8" required></label>
+        <label>Confirmation<input type="password" name="confirm" [(ngModel)]="confirm" autocomplete="new-password" minlength="8" required></label>
+        <div class="actions">
+          <button class="btn-primary" type="submit" [disabled]="!current || password.length < 8 || !confirm">Changer le mot de passe</button>
+          @if (passwordNotice(); as n) { <span class="notice" [class.err]="!n.ok" role="status">{{ n.text }}</span> }
+        </div>
+      </form>
+    </section>
+
+    <section class="section">
+      <h3>Mes données</h3>
+      <p>La sauvegarde est un fichier contenant tes offres (avec statuts et notes), tes CV et tes paramètres de recherche.
+        L'import ajoute son contenu à ton compte : les offres déjà présentes ne sont pas modifiées.</p>
+      <div class="actions">
+        <button type="button" (click)="exportData()">Télécharger une sauvegarde</button>
+        <button type="button" [disabled]="busy()" (click)="file.click()">{{ busy() ? 'Import en cours…' : 'Importer une sauvegarde' }}</button>
+        <input #file type="file" accept="application/json,.json" class="hidden" (change)="importData(file)">
+      </div>
+      @if (dataNotice(); as n) { <div class="notice" [class.err]="!n.ok" role="status">{{ n.text }}</div> }
+    </section>
+
+    @if (auth.user()?.admin) {
+      <section class="section">
+        <h3>Comptes</h3>
+        <p>Chaque compte a son propre tableau, ses CV et ses paramètres. Il n'y a pas d'inscription libre : c'est ici que les comptes sont créés.</p>
+        <table>
+          <tbody>
+            @for (u of users(); track u.id) {
+              <tr>
+                <td><b>{{ u.username }}</b> @if (u.admin) { <span class="badge">admin</span> }</td>
+                <td class="row-actions">
+                  <button type="button" class="btn-ghost" (click)="resetPassword(u)">Changer le mot de passe</button>
+                  @if (u.id !== auth.user()?.id) {
+                    <button type="button" class="btn-danger" (click)="deleteUser(u)">Supprimer</button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <form class="grid" (ngSubmit)="createUser()">
+          <label>Identifiant<input name="newUsername" [(ngModel)]="newUsername" autocomplete="off" required></label>
+          <label>Mot de passe (8 caractères minimum)<input name="newPassword" type="text" [(ngModel)]="newPassword" autocomplete="off" minlength="8" required></label>
+          <label class="check"><input type="checkbox" name="newAdmin" [(ngModel)]="newAdmin"> Administrateur</label>
+          <div class="actions">
+            <button class="btn-primary" type="submit" [disabled]="newUsername.trim().length < 2 || newPassword.length < 8">Créer le compte</button>
+          </div>
+        </form>
+        @if (usersNotice(); as n) { <div class="notice" [class.err]="!n.ok" role="status">{{ n.text }}</div> }
+      </section>
+    }
+  </div>
+</main>
