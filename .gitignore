@@ -11,6 +11,7 @@ venv/
 # Secrets
 .env
 .env.*
+!.env.example
 
 # Base de données locale (offres scrapées)
 *.db
@@ -27,3 +28,15 @@ venv/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Frontend Angular
+node_modules/
+frontend/dist/
+frontend/.angular/
+
+# Backend Spring Boot
+backend/target/
+backend/src/main/resources/static/
+
+# Export des données de l'ancienne version (données personnelles)
+sauvegarde-*.json
