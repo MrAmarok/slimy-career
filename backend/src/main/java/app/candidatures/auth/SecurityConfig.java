@@ -15,6 +15,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
@@ -26,6 +29,7 @@ import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
 import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
 import org.springframework.util.StringUtils;
 
+import app.candidatures.common.ClientIp;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -37,9 +41,36 @@ import jakarta.servlet.http.HttpServletResponse;
 @Configuration
 public class SecurityConfig {
 
+    /**
+     * Le navigateur n'exécute que les scripts servis par l'application elle-même (pas de script en ligne, pas de
+     * site tiers) : une faille d'injection ne pourrait pas charger de code. Les styles en ligne restent permis
+     * (Angular en injecte), ainsi que la police Google Fonts, les images « data: » (photo du CV, QR code) et
+     * l'aperçu PDF (« blob: »).
+     */
+    private static final String CONTENT_SECURITY_POLICY = String.join("; ",
+            "default-src 'self'",
+            "script-src 'self'",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            "font-src 'self' https://fonts.gstatic.com",
+            "img-src 'self' data: blob:",
+            "frame-src 'self' blob:",
+            "object-src 'self' blob:",
+            "connect-src 'self'",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "frame-ancestors 'none'");
+
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http, SecurityContextRepository contexts) throws Exception {
+    SecurityFilterChain filterChain(HttpSecurity http, SecurityContextRepository contexts, UserRepository users,
+                                    ClientIp clientIp) throws Exception {
         http
+            // session encore valable ? puis limites de taille et de débit, avant tout traitement
+            .addFilterBefore(new SessionGuardFilter(users), AuthorizationFilter.class)
+            .addFilterBefore(new RequestLimitFilter(clientIp), AuthorizationFilter.class)
+            .headers(headers -> headers
+                .contentSecurityPolicy(csp -> csp.policyDirectives(CONTENT_SECURITY_POLICY))
+                .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/login", "/api/auth/me").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")

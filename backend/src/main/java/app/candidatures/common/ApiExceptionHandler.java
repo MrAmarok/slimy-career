@@ -28,7 +28,17 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class, ClassCastException.class})
     ResponseEntity<String> unreadable(Exception e) {
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause instanceof BodyTooLargeException) {
+                return text(HttpStatus.CONTENT_TOO_LARGE, "Requête trop volumineuse.");
+            }
+        }
         return text(HttpStatus.BAD_REQUEST, "Requête invalide.");
+    }
+
+    @ExceptionHandler(BodyTooLargeException.class)
+    ResponseEntity<String> bodyTooLarge(BodyTooLargeException e) {
+        return text(HttpStatus.CONTENT_TOO_LARGE, "Requête trop volumineuse.");
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
