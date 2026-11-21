@@ -1,7 +1,7 @@
 # Carte de la base de données
 
 Base PostgreSQL 17. Le schéma est créé par Flyway à partir de
-`backend/src/main/resources/db/migration/V1__init.sql`.
+`backend/src/main/resources/db/migration/` (`V1__init.sql`, `V2__securite_comptes.sql`).
 
 Tout est rattaché à un utilisateur : supprimer un compte supprime ses offres, ses CV et ses paramètres.
 
@@ -19,6 +19,9 @@ erDiagram
         text username "unique, sans tenir compte de la casse"
         text password_hash "BCrypt"
         boolean admin
+        integer session_version "révocation des sessions"
+        text totp_secret "chiffré, vide si 2FA inactive"
+        bigint totp_last_step
         timestamp created_at
     }
 
@@ -79,6 +82,9 @@ erDiagram
 | `username` | `text` | obligatoire, unique sans tenir compte de la casse | identifiant de connexion |
 | `password_hash` | `text` | obligatoire | mot de passe haché (BCrypt), jamais en clair |
 | `admin` | `boolean` | défaut `false` | peut créer et supprimer des comptes |
+| `session_version` | `integer` | défaut `0` | augmente au changement de mot de passe ou de double authentification ; une session ouverte avec une ancienne valeur est refusée |
+| `totp_secret` | `text` | | secret de la double authentification, chiffré (AES-GCM, clé `APP_SECRET_KEY`) ; vide si elle est désactivée |
+| `totp_last_step` | `bigint` | défaut `0` | dernier code accepté, pour qu'un code ne serve pas deux fois |
 | `created_at` | `timestamp` | défaut : maintenant | date de création |
 
 ### `settings` : paramètres de recherche d'un utilisateur
@@ -109,8 +115,8 @@ Contenu de `data` :
 | `sites` | liste | sites activés (`linkedin`, `hellowork`, `indeed`, `google`) |
 | `skills` | liste | compétences à détecter dans les offres |
 | `categories` | objet | nom de catégorie → mots-clés |
-| `serpapi_key` | texte | clé SerpAPI propre à l'utilisateur (facultative) |
-| `deepl_key` | texte | clé DeepL propre à l'utilisateur (facultative) |
+| `serpapi_key` | texte | clé SerpAPI propre à l'utilisateur (facultative) ; chiffrée (`enc:…`), jamais renvoyée au navigateur |
+| `deepl_key` | texte | clé DeepL de l'utilisateur ; chiffrée (`enc:…`), jamais renvoyée au navigateur |
 
 ### `jobs` : offres
 
