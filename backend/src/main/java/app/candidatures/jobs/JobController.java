@@ -35,6 +35,10 @@ import app.candidatures.settings.SettingsService;
 public class JobController {
 
     private static final Pattern HAS_SCHEME = Pattern.compile("^[a-z][a-z0-9+.-]*:.*", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final int MAX_DESCRIPTION = 100_000;
+    private static final int MAX_NOTES = 20_000;
+    private static final int MAX_FIELD = 500;
+    private static final int MAX_LINK = 2_000;
     private static final Comparator<String> IGNORE_CASE = Comparator.comparing(s -> s.toLowerCase(Locale.ROOT));
 
     private final JobRepository jobs;
@@ -113,10 +117,19 @@ public class JobController {
         if (!JobService.isStatus(status)) {
             throw ApiException.badRequest("Statut inconnu.");
         }
+        for (String key : List.of("title", "company", "location", "contract")) {
+            limit(data.get(key), MAX_FIELD, "Ce champ");
+        }
+        limit(data.get("description"), MAX_DESCRIPTION, "La description");
+        limit(data.get("notes"), MAX_NOTES, "Les notes");
         String link = Values.trimmed(data.get("link"));
         if (!link.isEmpty() && !HAS_SCHEME.matcher(link).matches()) {
             link = "https://" + link;
         }
+        if (!link.isEmpty() && !Job.isWebLink(link)) {
+            throw ApiException.badRequest("Le lien doit être une adresse web (http:// ou https://).");
+        }
+        limit(link, MAX_LINK, "Le lien");
         if (!link.isEmpty()) {
             var same = jobs.findByLink(user.id(), link);
             if (same.isPresent()) {
@@ -150,6 +163,7 @@ public class JobController {
             fields.put("status", data.get("status"));
         }
         if (data.containsKey("notes")) {
+            limit(data.get("notes"), MAX_NOTES, "Les notes");
             fields.put("notes", Values.str(data.get("notes")));
         }
         for (String key : List.of("tags", "skills")) {
@@ -157,7 +171,11 @@ public class JobController {
                 if (!(data.get(key) instanceof List<?>)) {
                     throw ApiException.badRequest("« " + key + " » doit être une liste.");
                 }
-                fields.put(key, json.write(Skills.merge(Values.strings(data.get(key)))));
+                List<String> values = Values.strings(data.get(key));
+                if (values.size() > 200 || values.stream().anyMatch(v -> v.length() > 100)) {
+                    throw ApiException.badRequest("« " + key + " » : trop d'éléments ou élément trop long.");
+                }
+                fields.put(key, json.write(Skills.merge(values)));
             }
         }
         if (fields.isEmpty()) {
@@ -210,6 +228,12 @@ public class JobController {
             throw ApiException.badRequest("« ids » doit être une liste d'entiers.");
         }
         return out;
+    }
+
+    private static void limit(Object value, int max, String what) {
+        if (Values.str(value).length() > max) {
+            throw ApiException.badRequest(what + " : texte trop long (" + max + " caractères maximum).");
+        }
     }
 
     private static String emptyToNull(String s) {
