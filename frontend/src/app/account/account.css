@@ -21,3 +21,7 @@ table { width: 100%; border-collapse: collapse; }
 td { padding: 8px 0; border-bottom: 1px solid var(--line); }
 .row-actions { text-align: right; white-space: nowrap; }
 .badge { font-size: 11px; background: var(--accent-soft); color: var(--accent-text); padding: 2px 7px; border-radius: 999px; margin-left: 6px; }
+.badge.on { background: #ecfdf3; color: #15803d; }
+.qr { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.qr img { border: 1px solid var(--line); border-radius: 8px; }
+.qr code { font-size: 13px; color: var(--text); word-break: break-all; user-select: all; }

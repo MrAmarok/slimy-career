@@ -26,6 +26,12 @@ export class Account implements OnInit {
   confirm = '';
   readonly passwordNotice = signal<Notice | null>(null);
 
+  // double authentification
+  readonly totpSetup = signal<{ secret: string; qr: string } | null>(null);
+  readonly totpNotice = signal<Notice | null>(null);
+  totpPassword = '';
+  totpCode = '';
+
   // sauvegarde
   readonly dataNotice = signal<Notice | null>(null);
   readonly busy = signal(false);
@@ -53,10 +59,52 @@ export class Account implements OnInit {
     }
     try {
       await this.api.post('/api/auth/password', { current: this.current, password: this.password });
-      this.current = this.password = this.confirm = '';
-      this.passwordNotice.set({ ok: true, text: 'Mot de passe modifié.' });
+      // le serveur a fermé toutes les sessions du compte, celle-ci comprise : retour à la connexion
+      this.auth.forget();
+      location.assign('/login');
     } catch (e) {
       this.passwordNotice.set({ ok: false, text: this.message(e) });
+    }
+  }
+
+  /** Étape 1 : le serveur prépare un secret et renvoie le QR code à scanner. */
+  async startTotp() {
+    this.totpNotice.set(null);
+    try {
+      this.totpSetup.set(await this.api.post('/api/auth/totp/setup', { password: this.totpPassword }));
+      this.totpCode = '';
+    } catch (e) {
+      this.totpNotice.set({ ok: false, text: this.message(e) });
+    }
+  }
+
+  /** Étape 2 : le code affiché par l'application confirme l'activation. */
+  async enableTotp() {
+    this.totpNotice.set(null);
+    try {
+      this.auth.user.set(await this.api.post<User>('/api/auth/totp/enable', { code: this.totpCode }));
+      this.totpSetup.set(null);
+      this.totpPassword = this.totpCode = '';
+      this.totpNotice.set({ ok: true, text: 'Double authentification activée. Tes autres sessions ont été fermées.' });
+    } catch (e) {
+      this.totpNotice.set({ ok: false, text: this.message(e) });
+    }
+  }
+
+  cancelTotp() {
+    this.totpSetup.set(null);
+    this.totpCode = '';
+    this.totpNotice.set(null);
+  }
+
+  async disableTotp() {
+    this.totpNotice.set(null);
+    try {
+      this.auth.user.set(await this.api.post<User>('/api/auth/totp/disable', { password: this.totpPassword, code: this.totpCode }));
+      this.totpPassword = this.totpCode = '';
+      this.totpNotice.set({ ok: true, text: 'Double authentification désactivée.' });
+    } catch (e) {
+      this.totpNotice.set({ ok: false, text: this.message(e) });
     }
   }
 
@@ -128,7 +176,19 @@ export class Account implements OnInit {
     this.usersNotice.set(null);
     try {
       await this.api.put(`/api/admin/users/${u.id}/password`, { password });
-      this.usersNotice.set({ ok: true, text: `Mot de passe de « ${u.username} » modifié.` });
+      this.usersNotice.set({ ok: true, text: `Mot de passe de « ${u.username} » modifié. Ses sessions ont été fermées.` });
+    } catch (e) {
+      this.usersNotice.set({ ok: false, text: this.message(e) });
+    }
+  }
+
+  async resetTotp(u: User) {
+    if (!confirm(`Retirer la double authentification de « ${u.username} » ? (téléphone perdu) Ses sessions seront fermées.`)) return;
+    this.usersNotice.set(null);
+    try {
+      await this.api.delete(`/api/admin/users/${u.id}/totp`);
+      this.usersNotice.set({ ok: true, text: `Double authentification de « ${u.username} » retirée.` });
+      await this.loadUsers();
     } catch (e) {
       this.usersNotice.set({ ok: false, text: this.message(e) });
     }

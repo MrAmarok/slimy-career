@@ -23,9 +23,48 @@
         <label>Confirmation<input type="password" name="confirm" [(ngModel)]="confirm" autocomplete="new-password" minlength="8" required></label>
         <div class="actions">
           <button class="btn-primary" type="submit" [disabled]="!current || password.length < 8 || !confirm">Changer le mot de passe</button>
+          <span class="muted small">Toutes tes sessions seront fermées : il faudra te reconnecter.</span>
           @if (passwordNotice(); as n) { <span class="notice" [class.err]="!n.ok" role="status">{{ n.text }}</span> }
         </div>
       </form>
+    </section>
+
+    <section class="section">
+      <h3>Double authentification @if (auth.user()?.totp) { <span class="badge on">activée</span> }</h3>
+      @if (auth.user()?.totp) {
+        <p>À chaque connexion, un code à 6 chiffres de ton application d'authentification est demandé en plus du mot de passe.</p>
+        <form class="grid" (ngSubmit)="disableTotp()">
+          <label>Mot de passe<input type="password" name="totpPassword" [(ngModel)]="totpPassword" autocomplete="current-password" required></label>
+          <label>Code actuel<input name="totpCode" [(ngModel)]="totpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123 456" required></label>
+          <div class="actions">
+            <button type="submit" class="btn-danger" [disabled]="!totpPassword || !totpCode">Désactiver</button>
+          </div>
+        </form>
+      } @else if (totpSetup(); as setup) {
+        <p><b>1.</b> Scanne ce QR code avec Google Authenticator (ou une application équivalente).</p>
+        <div class="qr">
+          <img [src]="setup.qr" alt="QR code à scanner" width="180" height="180">
+          <div class="small muted">Impossible de scanner ? Saisis cette clé dans l'application :<br><code>{{ setup.secret }}</code></div>
+        </div>
+        <p><b>2.</b> Saisis le code à 6 chiffres affiché par l'application.</p>
+        <form class="grid" (ngSubmit)="enableTotp()">
+          <label>Code<input name="totpCode" [(ngModel)]="totpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123 456" required></label>
+          <div class="actions">
+            <button type="submit" class="btn-primary" [disabled]="!totpCode">Activer</button>
+            <button type="button" class="btn-ghost" (click)="cancelTotp()">Annuler</button>
+          </div>
+        </form>
+      } @else {
+        <p>Ajoute un code à 6 chiffres à la connexion, généré par Google Authenticator ou une application équivalente :
+          un mot de passe volé ne suffit plus pour entrer.</p>
+        <form class="grid" (ngSubmit)="startTotp()">
+          <label>Mot de passe<input type="password" name="totpPassword" [(ngModel)]="totpPassword" autocomplete="current-password" required></label>
+          <div class="actions">
+            <button type="submit" class="btn-primary" [disabled]="!totpPassword">Activer la double authentification</button>
+          </div>
+        </form>
+      }
+      @if (totpNotice(); as n) { <div class="notice" [class.err]="!n.ok" role="status">{{ n.text }}</div> }
     </section>
 
     <section class="section">
@@ -48,9 +87,12 @@
           <tbody>
             @for (u of users(); track u.id) {
               <tr>
-                <td><b>{{ u.username }}</b> @if (u.admin) { <span class="badge">admin</span> }</td>
+                <td><b>{{ u.username }}</b> @if (u.admin) { <span class="badge">admin</span> } @if (u.totp) { <span class="badge on">2FA</span> }</td>
                 <td class="row-actions">
                   <button type="button" class="btn-ghost" (click)="resetPassword(u)">Changer le mot de passe</button>
+                  @if (u.totp && u.id !== auth.user()?.id) {
+                    <button type="button" class="btn-ghost" (click)="resetTotp(u)">Retirer la 2FA</button>
+                  }
                   @if (u.id !== auth.user()?.id) {
                     <button type="button" class="btn-danger" (click)="deleteUser(u)">Supprimer</button>
                   }

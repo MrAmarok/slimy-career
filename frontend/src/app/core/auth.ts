@@ -8,6 +8,8 @@ export interface User {
   id: number;
   username: string;
   admin: boolean;
+  /** double authentification activée */
+  totp: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -31,8 +33,9 @@ export class Auth {
     return this.user();
   }
 
-  async login(username: string, password: string): Promise<void> {
-    this.user.set(await this.api.post<User>('/api/auth/login', { username, password }));
+  /** `code` : code à 6 chiffres de l'application d'authentification, si le compte en demande un (erreur 428 sinon). */
+  async login(username: string, password: string, code = ''): Promise<void> {
+    this.user.set(await this.api.post<User>('/api/auth/login', { username, password, code }));
     this.loaded = true;
   }
 

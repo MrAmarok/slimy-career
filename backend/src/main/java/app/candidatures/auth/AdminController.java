@@ -58,12 +58,20 @@ public class AdminController {
         return Map.of("ok", true);
     }
 
+    /** Téléphone perdu : retire la double authentification d'un compte (ses sessions sont fermées). */
+    @DeleteMapping("/{id}/totp")
+    ResponseEntity<Void> resetTotp(@PathVariable long id) {
+        users.findById(id).orElseThrow(ApiException::notFound);
+        users.setTotp(id, null, 0);
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/{id}")
     ResponseEntity<Void> delete(@PathVariable long id, @AuthenticationPrincipal AppUser me) {
         if (id == me.id()) {
             throw ApiException.badRequest("Tu ne peux pas supprimer ton propre compte.");
         }
-        users.delete(id); // offres, CV et réglages du compte partent avec (ON DELETE CASCADE)
+        users.delete(id); // offres, CV et réglages partent avec (ON DELETE CASCADE) ; ses sessions sont refusées dès la requête suivante
         return ResponseEntity.noContent().build();
     }
 }
