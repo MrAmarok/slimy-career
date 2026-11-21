@@ -2,10 +2,14 @@ package app.candidatures.scrape;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -33,16 +37,21 @@ import app.candidatures.settings.SettingsService;
 import jakarta.annotation.PreDestroy;
 
 /**
- * Lance le script Python de recherche d'offres (scraper/scrape.py) pour un utilisateur, suit sa progression
- * et enregistre les offres qu'il renvoie. Une seule recherche à la fois par utilisateur.
+ * Recherche d'offres d'un utilisateur (une seule à la fois par utilisateur), à partir de deux sources :
+ * - le service de recherche (scraper/, conteneur à part) pour LinkedIn, HelloWork et Indeed. Il ne reçoit que la
+ *   liste des recherches à faire : aucun secret, aucun accès à la base ;
+ * - Google Jobs, interrogé directement par ce serveur avec la clé SerpAPI.
+ * Les offres trouvées sont enregistrées ici (compétences, catégories, pays, dédoublonnage par lien).
  */
 @Service
 public class ScrapeService {
 
     private static final Logger log = LoggerFactory.getLogger(ScrapeService.class);
     private static final Pattern STEP = Pattern.compile("^\\[(\\d+)/(\\d+)] \\[(\\w+)] « (.+) » à (.+) \\.\\.\\.$");
-    private static final String JOBS_PREFIX = "@@JOBS ";
+    private static final String GOOGLE = "google";
     private static final int LOG_LINES = 300;
+    private static final int MAX_DESCRIPTION = 100_000;
+    private static final int MAX_STEPS = 400;
 
     /** Ce qui sera cherché : réglages de l'utilisateur, remplacés par les choix faits dans le panneau de recherche. */
     public record Request(List<String> searches, List<String> searchTags, List<String> searchSkills, List<String> locations,
@@ -50,15 +59,25 @@ public class ScrapeService {
 
     /** Recherche en cours ou terminée d'un utilisateur. */
     private static final class Run {
-        final Process process;
+        final long userId;
         final long startCount;
+        final int total;
+        final Detectors detectors;
+        final String defaultCountry;
         final Deque<String> lines = new ArrayDeque<>();
+        int done;
+        int added;
+        int sources;
         volatile boolean stopped;
         volatile boolean finished;
+        volatile InputStream stream;
 
-        Run(Process process, long startCount) {
-            this.process = process;
+        Run(long userId, long startCount, int total, Detectors detectors, String defaultCountry) {
+            this.userId = userId;
             this.startCount = startCount;
+            this.total = total;
+            this.detectors = detectors;
+            this.defaultCountry = defaultCountry;
         }
 
         synchronized void add(String line) {
@@ -74,19 +93,20 @@ public class ScrapeService {
     }
 
     private final Map<Long, Run> runs = new ConcurrentHashMap<>();
+    private final HttpClient http = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(10)).build();
     private final SettingsService settings;
     private final JobRepository jobs;
+    private final GoogleJobs google;
     private final Json json;
-    private final String python;
-    private final Path script;
+    private final URI scraperUrl;
 
-    public ScrapeService(SettingsService settings, JobRepository jobs, Json json,
-                         @Value("${app.scraper.python}") String python, @Value("${app.scraper.script}") String script) {
+    public ScrapeService(SettingsService settings, JobRepository jobs, GoogleJobs google, Json json,
+                         @Value("${app.scraper.url}") String scraperUrl) {
         this.settings = settings;
         this.jobs = jobs;
+        this.google = google;
         this.json = json;
-        this.python = python;
-        this.script = Path.of(script).toAbsolutePath().normalize();
+        this.scraperUrl = URI.create(scraperUrl.replaceAll("/+$", "") + "/run");
     }
 
     public Request request(long userId, Map<String, Object> data) {
@@ -111,7 +131,11 @@ public class ScrapeService {
     }
 
     private static List<String> pick(Map<String, Object> data, Map<String, Object> cfg, String key) {
-        return Values.strings(data.containsKey(key) ? data.get(key) : cfg.get(key));
+        List<String> values = Values.strings(data.containsKey(key) ? data.get(key) : cfg.get(key));
+        if (values.size() > 500 || values.stream().anyMatch(v -> v.length() > 200)) {
+            throw ApiException.badRequest("« " + key + " » : trop d'éléments ou élément trop long.");
+        }
+        return values;
     }
 
     public boolean running(long userId) {
@@ -126,6 +150,11 @@ public class ScrapeService {
         if (req.queries().isEmpty()) {
             throw ApiException.badRequest("Rien à chercher : ajoute une recherche, un tag ou une compétence.");
         }
+        int total = req.queries().size() * req.locations().size() * req.sites().size();
+        if (total > MAX_STEPS) {
+            throw ApiException.badRequest("Trop de recherches d'un coup (" + total + ", maximum " + MAX_STEPS
+                    + ") : réduis le nombre de recherches, de zones ou de sites.");
+        }
         Map<String, Object> cfg = req.cfg();
         if (remember) {
             Map<String, Object> kept = new LinkedHashMap<>();
@@ -137,105 +166,182 @@ public class ScrapeService {
             kept.put("contract", req.contract());
             cfg = settings.save(userId, kept);
         }
-
-        Map<String, Object> input = new LinkedHashMap<>();
-        input.put("queries", req.queries().stream().map(q -> Map.of("query", q.query(), "tag", q.tag())).toList());
-        input.put("locations", req.locations());
-        input.put("sites", req.sites());
-        input.put("limit", SettingsService.integer(cfg, "results_per_search", 25));
-        input.put("max_age_days", SettingsService.integer(cfg, "max_age_days", 30));
-        input.put("parallel_searches", SettingsService.integer(cfg, "parallel_searches", 6));
-        input.put("per_site", SettingsService.integer(cfg, "per_site", 2));
-        input.put("country", Values.str(cfg.get("country")));
-        input.put("radius_km", SettingsService.integer(cfg, "radius_km", 30));
-        input.put("serpapi_key", settings.serpapiKey(cfg));
-
-        Process process;
-        try {
-            ProcessBuilder builder = new ProcessBuilder(python, "-u", script.toString())
-                    .directory(script.getParent().toFile())
-                    .redirectErrorStream(true);
-            builder.environment().put("PYTHONIOENCODING", "utf-8");
-            process = builder.start();
-            try (OutputStream stdin = process.getOutputStream()) {
-                stdin.write(json.write(input).getBytes(StandardCharsets.UTF_8));
-            }
-        } catch (IOException e) {
-            log.error("Impossible de lancer {} {}", python, script, e);
-            throw new ApiException(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Impossible de lancer la recherche : le script Python est introuvable sur le serveur.");
-        }
-        Run run = new Run(process, jobs.count(userId));
-        runs.put(userId, run);
-        Detectors detectors = Detectors.of(cfg);
+        int limit = SettingsService.integer(cfg, "results_per_search", 25);
+        int perSite = SettingsService.integer(cfg, "per_site", 2);
         String country = Values.str(cfg.get("country"));
-        Thread.ofVirtual().name("scrape-" + userId).start(() -> follow(userId, run, detectors, country.isEmpty() ? null : country));
+        List<String> remoteSites = req.sites().stream().filter(s -> !s.equals(GOOGLE)).toList();
+        boolean withGoogle = req.sites().contains(GOOGLE);
+
+        Run run = new Run(userId, jobs.count(userId), total, Detectors.of(cfg), country.isEmpty() ? null : country);
+        run.sources = (remoteSites.isEmpty() ? 0 : 1) + (withGoogle ? 1 : 0);
+        run.add(total + " recherches (max " + perSite + " en même temps par site)");
+        runs.put(userId, run);
+
+        if (!remoteSites.isEmpty()) {
+            // la demande envoyée au service de recherche : uniquement quoi chercher et où, jamais de clé
+            Map<String, Object> input = new LinkedHashMap<>();
+            input.put("queries", req.queries().stream().map(q -> Map.of("query", q.query(), "tag", q.tag())).toList());
+            input.put("locations", req.locations());
+            input.put("sites", remoteSites);
+            input.put("limit", limit);
+            input.put("max_age_days", SettingsService.integer(cfg, "max_age_days", 30));
+            input.put("parallel_searches", SettingsService.integer(cfg, "parallel_searches", 6));
+            input.put("per_site", perSite);
+            input.put("country", country);
+            input.put("radius_km", SettingsService.integer(cfg, "radius_km", 30));
+            String body = json.write(input);
+            Thread.ofVirtual().name("scrape-" + userId).start(() -> followRemote(run, body));
+        }
+        if (withGoogle) {
+            String key = settings.serpapiKey(userId);
+            Thread.ofVirtual().name("scrape-google-" + userId).start(() -> runGoogle(run, req, limit, key));
+        }
     }
 
-    /** Lit la sortie du script jusqu'à sa fin : lignes de suivi dans le journal, offres en base. */
-    private void follow(long userId, Run run, Detectors detectors, String defaultCountry) {
-        int totalNew = 0;
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(run.process.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.startsWith(JOBS_PREFIX)) {
-                    try {
-                        totalNew += ingest(userId, run, json.map(line.substring(JOBS_PREFIX.length())), detectors, defaultCountry);
-                    } catch (RuntimeException e) {
-                        log.error("Offres non enregistrées", e);
-                        run.add("  erreur à l'enregistrement des offres : " + e.getMessage());
-                    }
-                } else {
-                    run.add(line.stripTrailing());
+    /** Lit la réponse du service de recherche au fil de l'eau, jusqu'à sa fin. */
+    private void followRemote(Run run, String body) {
+        try {
+            HttpResponse<InputStream> response = http.send(HttpRequest.newBuilder(scraperUrl)
+                    .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body)).build(),
+                    HttpResponse.BodyHandlers.ofInputStream());
+            run.stream = response.body();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
+                if (response.statusCode() != 200) {
+                    String message = reader.readLine();
+                    run.add("Le service de recherche a refusé la demande (" + response.statusCode() + (message == null ? "" : " : " + message) + ").");
+                    return;
+                }
+                if (run.stopped) {
+                    return;
+                }
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    handle(run, line);
                 }
             }
-            int code = run.process.waitFor();
-            if (run.stopped) {
-                run.add("Recherche arrêtée : " + totalNew + " nouvelles offres.");
-            } else if (code != 0) {
-                run.add("La recherche s'est arrêtée sur une erreur (code " + code + ").");
-            } else {
-                run.add("");
-                run.add("Terminé : " + totalNew + " nouvelles offres, " + jobs.count(userId) + " au total.");
-            }
         } catch (IOException e) {
-            run.add("Lecture de la recherche interrompue : " + e.getMessage());
+            if (!run.stopped) {
+                log.warn("Service de recherche injoignable ou interrompu : {}", e.toString());
+                run.add("Le service de recherche (LinkedIn, HelloWork, Indeed) est injoignable ou s'est interrompu.");
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        } catch (RuntimeException e) {
+            log.error("Recherche interrompue", e);
+            run.add("La recherche s'est arrêtée sur une erreur interne.");
         } finally {
-            run.process.destroy();
+            sourceDone(run);
+        }
+    }
+
+    private void handle(Run run, String line) {
+        if (line.equals("@@PING")) {
+            return;
+        }
+        if (line.startsWith("@@START ")) {
+            Map<String, Object> e = json.map(line.substring(8));
+            run.add("  ▶ [" + Values.str(e.get("site")) + "] « " + Values.str(e.get("query")) + " » à " + Values.str(e.get("location")));
+        } else if (line.startsWith("@@STEP ")) {
+            Map<String, Object> e = json.map(line.substring(7));
+            List<Object> found = Values.list(e.get("jobs"));
+            complete(run, Values.str(e.get("site")), Values.str(e.get("query")), Values.str(e.get("tag")), Values.str(e.get("location")),
+                    found == null ? List.of() : found, e.get("error") == null ? null : Values.str(e.get("error")));
+        } else if (line.startsWith("@@EXIT ")) {
+            if (!line.equals("@@EXIT 0") && !run.stopped) {
+                run.add("Le service de recherche s'est arrêté sur une erreur.");
+            }
+        } else if (!line.isBlank()) {
+            run.add(line.length() > 500 ? line.substring(0, 500) : line.stripTrailing());
+        }
+    }
+
+    private void runGoogle(Run run, Request req, int limit, String apiKey) {
+        try {
+            for (SearchPlan.Query q : req.queries()) {
+                for (String location : req.locations()) {
+                    if (run.stopped) {
+                        return;
+                    }
+                    run.add("  ▶ [" + GOOGLE + "] « " + q.query() + " » à " + location);
+                    try {
+                        List<Map<String, Object>> found = google.search(q.query(), location, limit, apiKey);
+                        complete(run, GOOGLE, q.query(), q.tag(), location, new ArrayList<>(found), null);
+                    } catch (GoogleJobs.GoogleException e) {
+                        complete(run, GOOGLE, q.query(), q.tag(), location, List.of(), e.getMessage());
+                    }
+                }
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (RuntimeException e) {
+            log.error("Recherche Google interrompue", e);
+            run.add("  erreur google : erreur interne");
+        } finally {
+            sourceDone(run);
+        }
+    }
+
+    /** Une recherche (un site, une requête, une zone) est terminée : ligne de progression, puis enregistrement. */
+    private void complete(Run run, String site, String query, String tag, String location, List<Object> found, String error) {
+        synchronized (run) {
+            run.done++;
+            // ligne lue par status() pour la barre de progression : index = nombre de recherches terminées
+            run.add("[" + run.done + "/" + run.total + "] [" + site + "] « " + query + " » à " + location + " ...");
+            if (error != null) {
+                run.add("  erreur " + site + " : " + error);
+                return;
+            }
+            try {
+                run.added += ingest(run, tag, location, found);
+            } catch (RuntimeException e) {
+                log.error("Offres non enregistrées", e);
+                run.add("  erreur à l'enregistrement des offres");
+            }
+        }
+    }
+
+    private void sourceDone(Run run) {
+        synchronized (run) {
+            if (--run.sources > 0) {
+                return;
+            }
+            if (run.stopped) {
+                run.add("Recherche arrêtée : " + run.added + " nouvelles offres.");
+            } else {
+                run.add("");
+                run.add("Terminé : " + run.added + " nouvelles offres, " + jobs.count(run.userId) + " au total.");
+            }
             run.finished = true;
         }
     }
 
-    private int ingest(long userId, Run run, Map<String, Object> step, Detectors detectors, String defaultCountry) {
-        String tag = Values.str(step.get("tag"));
-        String location = Values.str(step.get("location"));
+    private int ingest(Run run, String tag, String location, List<Object> found) {
         String country = Geo.normalizeCountry(location);
         if (country == null) {
-            country = defaultCountry;
+            country = run.defaultCountry;
         }
-        List<Object> found = Values.list(step.get("jobs"));
         int count = 0;
         int added = 0;
-        for (Object o : found == null ? List.of() : found) {
+        for (Object o : found) {
             Map<String, Object> j = Values.map(o);
             if (j == null) {
                 continue;
             }
-            String title = Values.trimmed(j.get("title")).replace("\u0000", "");
-            String link = Values.trimmed(j.get("link")).replace("\u0000", "");
-            if (title.isEmpty() || link.isEmpty()) {
+            // ce qui vient des sites n'est pas fiable : texte nettoyé et borné, lien web uniquement
+            String title = text(j.get("title"), 500);
+            String link = text(j.get("link"), 2000);
+            if (title == null || !Job.isWebLink(link)) {
                 continue;
             }
             count++;
-            String description = text(j.get("description"));
-            String place = text(j.get("location"));
-            Job job = new Job(title, text(j.get("company")), place, description, link, text(j.get("source")), text(j.get("contract")),
-                    text(j.get("date_posted")), Geo.countryOf(place, country),
-                    detectors.skills(title, description, Values.strings(j.get("extra_skills"))), List.of(tag),
-                    detectors.categories(title, description), List.of(location));
-            if (jobs.upsert(userId, job)) {
+            String description = text(j.get("description"), MAX_DESCRIPTION);
+            String place = text(j.get("location"), 500);
+            List<String> extra = Values.strings(j.get("extra_skills")).stream().filter(s -> s.length() <= 100).limit(100).toList();
+            Job job = new Job(title, text(j.get("company"), 500), place, description, link, text(j.get("source"), 100),
+                    text(j.get("contract"), 200), text(j.get("date_posted"), 40), Geo.countryOf(place, country),
+                    run.detectors.skills(title, description, extra), List.of(tag), run.detectors.categories(title, description),
+                    List.of(location));
+            if (jobs.upsert(run.userId, job)) {
                 added++;
             }
         }
@@ -243,9 +349,15 @@ public class ScrapeService {
         return added;
     }
 
-    private static String text(Object value) {
-        String s = value == null ? null : value.toString();
-        return s == null || s.isEmpty() ? null : s.replace("\u0000", "");
+    private static String text(Object value, int max) {
+        if (value == null) {
+            return null;
+        }
+        String s = value.toString().replace("\u0000", "").strip();
+        if (s.isEmpty()) {
+            return null;
+        }
+        return s.length() > max ? s.substring(0, max) : s;
     }
 
     /** État courant : étape, site, recherche, zone et nombre d'offres ajoutées depuis le lancement. */
@@ -277,13 +389,25 @@ public class ScrapeService {
     public void stop(long userId) {
         Run run = runs.get(userId);
         if (run != null && !run.finished) {
-            run.stopped = true;
-            run.process.destroy();
+            stop(run);
+        }
+    }
+
+    /** Coupe la connexion au service de recherche : il arrête alors la recherche de son côté. */
+    private static void stop(Run run) {
+        run.stopped = true;
+        InputStream stream = run.stream;
+        if (stream != null) {
+            try {
+                stream.close();
+            } catch (IOException e) {
+                // déjà fermée
+            }
         }
     }
 
     @PreDestroy
     void stopAll() {
-        runs.values().forEach(run -> run.process.destroyForcibly());
+        runs.values().stream().filter(run -> !run.finished).forEach(ScrapeService::stop);
     }
 }
