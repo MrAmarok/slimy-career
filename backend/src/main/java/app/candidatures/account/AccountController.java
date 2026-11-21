@@ -87,8 +87,9 @@ public class AccountController {
         List<Object> importedJobs = Values.list(data.get("jobs"));
         for (Object o : importedJobs == null ? List.of() : importedJobs) {
             Map<String, Object> job = Values.map(o);
-            if (job == null || Values.trimmed(job.get("title")).isEmpty() || Values.trimmed(job.get("link")).isEmpty()) {
-                continue;
+            if (job == null || Values.trimmed(job.get("title")).isEmpty()
+                    || !app.candidatures.jobs.Job.isStorableLink(Values.trimmed(job.get("link")))) {
+                continue;   // sans titre, ou lien qui n'est pas une adresse web
             }
             Map<String, Object> clean = new LinkedHashMap<>();
             for (String key : List.of("title", "company", "location", "description", "link", "source", "contract", "date_posted",

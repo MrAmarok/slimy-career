@@ -31,6 +31,8 @@ import app.candidatures.settings.SettingsService;
 @RequestMapping("/api")
 public class CvController {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CvController.class);
+
     private final CvRepository cvs;
     private final CvLang lang;
     private final SettingsService settings;
@@ -98,7 +100,9 @@ public class CvController {
         try {
             parsed = CvImport.parsePdf(raw);
         } catch (IOException | RuntimeException e) {
-            throw ApiException.badRequest("PDF illisible : " + e.getMessage());
+            log.warn("Import de CV : PDF illisible ({})", e.toString());
+            throw ApiException.badRequest("Ce PDF n'a pas pu être lu : il est peut-être abîmé ou protégé par un mot de passe. "
+                    + "Essaie de l'exporter à nouveau depuis le logiciel qui l'a créé.");
         }
         String filename = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().replaceAll("^.*[/\\\\]", "");
         String stem = filename.replaceAll("\\.[^.]*$", "");

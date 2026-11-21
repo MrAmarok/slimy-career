@@ -82,7 +82,7 @@ function suggestions(values: string[], chosen: string[], limit = Infinity): Sugg
           <h4>Sites</h4>
           <div class="checks" style="margin-top:0">
             @for (site of availableSites(); track site) {
-              <label [attr.title]="site === 'google' && !config()?.serpapi_key ? 'Ignoré sans clé SerpAPI (voir Paramètres)' : null">
+              <label [attr.title]="site === 'google' && !config()?.google_available ? 'Ignoré sans clé SerpAPI (voir Paramètres)' : null">
                 <input type="checkbox" [checked]="sites().has(site)" (change)="toggleSite(site, $any($event.target).checked)" />{{ siteLabel(site) }}
               </label>
             }

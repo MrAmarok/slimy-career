@@ -49,7 +49,10 @@ export interface SearchConfig {
   max_age_days: number;
   parallel_searches: number;
   per_site: number;
-  serpapi_key: string;
+  /** une clé SerpAPI est enregistrée pour ce compte (la clé elle-même ne sort jamais du serveur) */
+  serpapi_key_set: boolean;
+  /** Google Jobs utilisable : clé du compte ou clé commune du serveur */
+  google_available: boolean;
   sites: string[];
 }
 

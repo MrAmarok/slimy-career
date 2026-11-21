@@ -27,7 +27,7 @@ public class ConfigController {
 
     @GetMapping
     Map<String, Object> get(@AuthenticationPrincipal AppUser user) {
-        return view(settings.load(user.id()));
+        return view(user.id(), settings.load(user.id()));
     }
 
     @PutMapping
@@ -37,12 +37,16 @@ public class ConfigController {
         if (!saved.get("categories").equals(before)) {
             jobs.recategorize(user.id());
         }
-        return view(saved);
+        return view(user.id(), saved);
     }
 
-    private static Map<String, Object> view(Map<String, Object> cfg) {
+    /** Les clés d'API s'enregistrent mais ne ressortent jamais du serveur : le navigateur sait seulement si elles existent. */
+    private Map<String, Object> view(long userId, Map<String, Object> cfg) {
+        Map<String, Object> shown = new LinkedHashMap<>(cfg);
+        shown.put("serpapi_key_set", settings.hasOwnSerpapiKey(userId));
+        shown.put("google_available", settings.hasSerpapiKey(userId));
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("config", cfg);
+        out.put("config", shown);
         out.put("available_sites", SettingsService.SITES);
         return out;
     }

@@ -80,6 +80,7 @@ public final class CvPdf {
     private static final Pattern ISO_DATE = Pattern.compile("(\\d{4})-(\\d{2})(?:-\\d{2})?");
     private static final Pattern BULLET_PREFIX = Pattern.compile("^\\s*(?:[-•–·]|\\*(?!\\*))\\s*");
     private static final Pattern HAS_SCHEME = Pattern.compile("^[a-z]+:.*", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern SAFE_SCHEME = Pattern.compile("^(https?|mailto):", Pattern.CASE_INSENSITIVE);
     private static final Pattern HTTP_PREFIX = Pattern.compile("^https?://(www\\.)?");
     private static final Pattern PHOTO = Pattern.compile("^data:image/(png|jpe?g|webp);base64,(.+)$", Pattern.DOTALL);
 
@@ -466,6 +467,9 @@ public final class CvPdf {
 
     private static String link(Object value) {
         String url = clean(value);
+        if (HAS_SCHEME.matcher(url).matches() && !SAFE_SCHEME.matcher(url).lookingAt()) {
+            return Clean.escape(url);   // « javascript: », « file: »… : écrit en clair, sans lien cliquable
+        }
         String href = HAS_SCHEME.matcher(url).matches() ? url : "https://" + url;
         // l'adresse est écrite en entier : un logiciel qui ne lit que le texte la récupère quand même
         String shown = HTTP_PREFIX.matcher(url).replaceFirst("");

@@ -74,7 +74,15 @@ interface CategoryRow {
           <label>Âge maximum des offres (jours)<input type="number" min="1" max="365" [(ngModel)]="age" (ngModelChange)="markDirty()" /></label>
           <label>Recherches en parallèle<input type="number" min="1" max="32" [(ngModel)]="parallel" (ngModelChange)="markDirty()" /></label>
           <label>Max simultanées par site<input type="number" min="1" max="8" [(ngModel)]="perSite" (ngModelChange)="markDirty()" /></label>
-          <label>Clé SerpAPI (Google Jobs)<input type="password" autocomplete="off" placeholder="optionnelle" [(ngModel)]="serpapi" (ngModelChange)="markDirty()" /></label>
+          <label>Clé SerpAPI (Google Jobs)
+            <input type="password" autocomplete="off" [placeholder]="serpapiSet() ? 'clé enregistrée — saisir pour la remplacer' : 'optionnelle'"
+                   [(ngModel)]="serpapi" (ngModelChange)="serpapiRemove.set(false); markDirty()" />
+            @if (serpapiSet() && !serpapi()) {
+              <span class="small" style="display:flex; align-items:center; gap:6px; font-weight:400">
+                <input type="checkbox" [checked]="serpapiRemove()" (change)="serpapiRemove.set($any($event.target).checked); markDirty()" /> Retirer la clé enregistrée
+              </span>
+            }
+          </label>
         </div>
         <div class="checks">
           <span class="muted small">Sites :</span>
@@ -135,6 +143,9 @@ export class SettingsTab {
   protected readonly parallel = signal<number | null>(null);
   protected readonly perSite = signal<number | null>(null);
   protected readonly serpapi = signal('');
+  /** une clé est enregistrée côté serveur (elle n'est jamais renvoyée : le champ reste vide) */
+  protected readonly serpapiSet = signal(false);
+  protected readonly serpapiRemove = signal(false);
   protected readonly categories = signal<CategoryRow[]>([]);
   protected readonly availableSites = signal<string[]>([]);
   protected readonly sites = signal<ReadonlySet<string>>(new Set());
@@ -176,7 +187,9 @@ export class SettingsTab {
     this.age.set(c.max_age_days);
     this.parallel.set(c.parallel_searches);
     this.perSite.set(c.per_site);
-    this.serpapi.set(c.serpapi_key);
+    this.serpapi.set('');
+    this.serpapiSet.set(c.serpapi_key_set);
+    this.serpapiRemove.set(false);
     this.categories.set(Object.entries(c.categories).map(([name, keywords]) => ({ id: this.nextCatId++, name, keywords })));
     this.availableSites.set(res.available_sites);
     this.sites.set(new Set(c.sites));
@@ -223,7 +236,8 @@ export class SettingsTab {
       max_age_days: Number(this.age()) || 30,
       parallel_searches: Number(this.parallel()) || 6,
       per_site: Number(this.perSite()) || 2,
-      serpapi_key: this.serpapi(),
+      // champ vide = clé inchangée, sauf si « Retirer » est coché
+      ...(this.serpapi().trim() ? { serpapi_key: this.serpapi().trim() } : this.serpapiRemove() ? { serpapi_key: '' } : {}),
       sites: this.availableSites().filter((s) => this.sites().has(s)),
     };
     try {
