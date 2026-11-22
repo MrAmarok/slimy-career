@@ -9,7 +9,8 @@ import { Auth } from '../core/auth';
   imports: [FormsModule],
   template: `
     <form class="box" (ngSubmit)="submit()">
-      <h1>Candidatures</h1>
+      <img class="mascot" src="logo.png" alt="" width="96" height="96" />
+      <h1>Slimy Career</h1>
       <p class="muted">Connecte-toi pour retrouver ton tableau et tes CV.</p>
       <label>Identifiant<input name="username" [(ngModel)]="username" autocomplete="username" required autofocus /></label>
       <label>Mot de passe<input name="password" type="password" [(ngModel)]="password" autocomplete="current-password" required /></label>
@@ -27,11 +28,12 @@ import { Auth } from '../core/auth';
     </form>
   `,
   styles: `
-    :host { flex: 1; display: grid; place-items: center; background: var(--soft); padding: 16px; }
-    .box { width: 100%; max-width: 360px; background: #fff; border: 1px solid var(--line); border-radius: 14px;
+    :host { flex: 1; display: grid; place-items: center; background: linear-gradient(160deg, var(--accent-soft), var(--secondary-soft)); padding: 16px; }
+    .box { width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
            box-shadow: var(--shadow-lg); padding: 28px; display: flex; flex-direction: column; gap: 14px; }
-    h1 { margin: 0; font-size: 20px; }
-    p { margin: -8px 0 4px; }
+    .mascot { width: 96px; height: 96px; align-self: center; }
+    h1 { margin: 0; font-size: 22px; text-align: center; color: var(--secondary-text); }
+    p { margin: -8px 0 4px; text-align: center; }
     label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 500; color: var(--muted); }
     input { font-size: 14px; color: var(--text); }
     .error { color: var(--danger); font-size: 13px; }

@@ -35,6 +35,8 @@ export class Auth {
 
   /** `code` : code à 6 chiffres de l'application d'authentification, si le compte en demande un (erreur 428 sinon). */
   async login(username: string, password: string, code = ''): Promise<void> {
+    // page de connexion ouverte directement : aucun appel n'a encore reçu le jeton CSRF
+    if (!this.loaded) await this.current();
     this.user.set(await this.api.post<User>('/api/auth/login', { username, password, code }));
     this.loaded = true;
   }
