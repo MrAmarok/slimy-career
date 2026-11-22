@@ -1,11 +1,11 @@
 # ---- 1. interface Angular ----
 # Images de base épinglées par empreinte (mises à jour proposées par Dependabot).
-FROM node:24-bookworm-slim@sha256:32e57b5784e8875d2cc0112dcaf13f9100f2d0d9446187808738e99aee29a5a2 AS frontend
+FROM oven/bun:1.4.3-slim@sha256:14a223fa35747ec728bce300ef85888bc5f7958164d15bbba6a54b22b52a3288 AS frontend
 WORKDIR /app
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci --no-audit --no-fund
+COPY frontend/package.json frontend/bun.lock ./
+RUN bun install --frozen-lockfile
 COPY frontend/ ./
-RUN npx ng build
+RUN bun run build
 
 # ---- 2. serveur Spring Boot (l'interface compilée est embarquée dans le jar) ----
 FROM maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320 AS backend

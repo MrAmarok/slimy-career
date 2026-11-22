@@ -1,0 +1,16 @@
+{
+  "name": "slimy-career",
+  "private": true,
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "scripts": {
+    "dev": "bun tools/dev.ts dev",
+    "database": "bun tools/dev.ts database",
+    "database:stop": "bun tools/dev.ts database:stop",
+    "database:reset": "bun tools/dev.ts database:reset",
+    "scraper": "bun tools/dev.ts scraper",
+    "backend": "bun tools/dev.ts backend",
+    "frontend": "bun tools/dev.ts frontend",
+    "test": "cd backend && mvn test",
+    "build": "cd frontend && bun install && bun run build"
+  }
+}

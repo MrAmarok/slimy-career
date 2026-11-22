@@ -1,0 +1,3 @@
+# Bun ne charge pas « .env » de lui-même : ce fichier contient les secrets du déploiement,
+# qui ne doivent pas arriver dans les services lancés en développement (voir tools/dev.ts).
+env = false
