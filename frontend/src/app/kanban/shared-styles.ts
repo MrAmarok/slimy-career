@@ -1,16 +1,16 @@
 /** Morceaux de CSS utilisés par plusieurs composants du tableau (chaque composant garde ses styles encapsulés). */
 
 export const PILL_CSS = `
-  .pill { border-radius: 999px; padding: 5px 12px; font-size: 13px; border: 1px solid var(--line); background: #fff; color: var(--text); font-weight: 500; }
+  .pill { border-radius: 999px; padding: 5px 12px; font-size: 13px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-weight: 500; }
   .pill .n { color: var(--faint); margin-left: 5px; font-weight: 400; }
-  .pill:hover { border-color: var(--line-strong); background: #fff; }
+  .pill:hover { border-color: var(--line-strong); background: var(--surface); }
   .pill.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); }
   .pill.on .n { color: var(--accent-text); }
 `;
 
 export const TAG_CSS = `
-  .tag { font-size: 11px; padding: 1px 7px; border-radius: 5px; background: var(--soft); color: #374151; white-space: nowrap; }
-  .tag.cat { background: var(--accent-soft); color: var(--accent-text); font-weight: 500; }
+  .tag { font-size: 11px; padding: 1px 7px; border-radius: 5px; background: var(--soft); color: var(--text-2); white-space: nowrap; }
+  .tag.cat { background: var(--secondary-soft); color: var(--secondary-text); font-weight: 500; }
 `;
 
 export const DOT_CSS = `
@@ -29,7 +29,7 @@ export const CHECKS_CSS = `
 `;
 
 export const DRAWER_CSS = `
-  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100vw); background: #fff; border-left: 1px solid var(--line); box-shadow: var(--shadow-lg); z-index: 20; display: flex; flex-direction: column; transform: translateX(100%); transition: transform .2s ease; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100vw); background: var(--surface); border-left: 1px solid var(--line); box-shadow: var(--shadow-lg); z-index: 20; display: flex; flex-direction: column; transform: translateX(100%); transition: transform .2s ease; }
   .drawer.open { transform: none; }
   .drawer:not(.open) { box-shadow: none; visibility: hidden; transition: transform .2s ease, visibility 0s .2s; }
   .drawer-head { padding: 18px 20px 14px; border-bottom: 1px solid var(--line); display: flex; gap: 10px; align-items: flex-start; }

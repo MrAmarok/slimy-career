@@ -4,9 +4,8 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Api } from '../core/api';
-import { UserMenu } from '../core/user-menu';
 import { ChipEditor } from './chip-editor';
 import { AtsDialog, CheckDialog, TranslateDialog } from './cv-dialogs';
 import {
@@ -25,7 +24,7 @@ const isFileDrag = (e: DragEvent) => [...(e.dataTransfer?.types || [])].includes
 @Component({
   selector: 'app-cv',
   imports: [
-    FormsModule, RouterLink, UserMenu, ChipEditor, CvCard, EntryControls,
+    FormsModule, ChipEditor, CvCard, EntryControls,
     InfoSection, ListSection, SkillsSection, LayoutSection, AtsDialog, CheckDialog, TranslateDialog,
   ],
   providers: [CvStore],

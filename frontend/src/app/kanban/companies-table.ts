@@ -62,7 +62,7 @@ function valueOf(g: Group, key: string): string | number {
     </table>
   `,
   styles: `
-    :host { display: block; flex: 1; overflow: auto; padding: 0 20px 20px; }
+    :host { display: block; flex: 1; overflow: auto; padding: 14px 20px 20px; }
     table { border-collapse: separate; border-spacing: 0; width: 100%; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
     th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
     td.wrap { white-space: normal; color: var(--muted); font-size: 13px; }

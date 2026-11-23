@@ -38,7 +38,7 @@ const emptyForm = () => ({ title: '', company: '', location: '', contract: '', l
         <div><label class="lbl" for="add-desc">Description</label><textarea id="add-desc" name="description" style="min-height:130px" placeholder="Colle ici le texte de l'offre" [(ngModel)]="form().description"></textarea></div>
         <div><label class="lbl" for="add-notes">Notes</label><textarea id="add-notes" name="notes" style="min-height:50px" placeholder="Contact, date de relance, d'où vient l'offre…" [(ngModel)]="form().notes"></textarea></div>
         <div style="display:flex; gap:8px; align-items:center">
-          <span class="small" style="flex:1; color:var(--danger, #b91c1c)">{{ error() }}</span>
+          <span class="small" style="flex:1; color:var(--danger)">{{ error() }}</span>
           <button type="button" class="btn-ghost" (click)="close()">Annuler</button>
           <button type="submit" class="btn-primary" [disabled]="busy()">Ajouter</button>
         </div>
@@ -49,7 +49,7 @@ const emptyForm = () => ({ title: '', company: '', location: '', contract: '', l
     FORM_GRID_CSS,
     `
     dialog { border: none; border-radius: 14px; padding: 0; width: min(620px, 94vw); box-shadow: var(--shadow-lg); }
-    dialog::backdrop { background: rgba(17,24,39,.35); }
+    dialog::backdrop { background: var(--overlay); }
     .modal { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
     .modal h2 { margin: 0; font-size: 18px; }
     .modal label.lbl { font-size: 13px; font-weight: 500; display: block; margin-bottom: 5px; }

@@ -14,7 +14,7 @@ import { Component, ElementRef, inject, input, model, output, viewChild } from '
   `,
   host: { '(click)': 'onHostClick($event)' },
   styles: `
-    :host { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px; min-height: 40px; background: #fff; cursor: text; }
+    :host { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px; min-height: 40px; background: var(--surface); cursor: text; }
     :host(:focus-within) { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
     input { border: none; flex: 1; min-width: 140px; padding: 3px 4px; box-shadow: none !important; }
     .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 2px 4px 2px 8px; font-size: 12.5px; }

@@ -71,11 +71,11 @@ import { DOT_CSS, DRAWER_CSS } from './shared-styles';
     `
     .status-picker { display: flex; flex-wrap: wrap; gap: 6px; }
     .status-picker button { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 5px 10px; border-color: var(--line); }
-    .status-picker button.on { border-color: var(--text); background: var(--text); color: #fff; }
+    .status-picker button.on { border-color: var(--text); background: var(--tip); color: #fff; }
     .info-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 13px; }
     .info-grid dt { color: var(--muted); }
     .info-grid dd { margin: 0; }
-    .desc { white-space: pre-wrap; font-size: 13px; line-height: 1.6; color: #374151; }
+    .desc { white-space: pre-wrap; font-size: 13px; line-height: 1.6; color: var(--text-2); }
     .saved-hint { font-size: 12px; color: var(--ok); margin-left: 8px; font-weight: 400; text-transform: none; letter-spacing: 0; }
     `,
   ],

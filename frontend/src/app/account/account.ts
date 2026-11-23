@@ -3,7 +3,6 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Api } from '../core/api';
 import { Auth, User } from '../core/auth';
-import { UserMenu } from '../core/user-menu';
 
 interface Notice {
   ok: boolean;
@@ -12,7 +11,7 @@ interface Notice {
 
 @Component({
   selector: 'app-account',
-  imports: [FormsModule, RouterLink, UserMenu],
+  imports: [FormsModule],
   templateUrl: './account.html',
   styleUrl: './account.css',
 })
@@ -134,7 +133,7 @@ export class Account implements OnInit {
       try {
         data = JSON.parse(await file.text());
       } catch {
-        throw new Error("Ce fichier n'est pas une sauvegarde de Candidatures.");
+        throw new Error("Ce fichier n'est pas une sauvegarde de Slimy Career.");
       }
       const r = await this.api.post<{ jobs: number; jobs_skipped: number; cvs: number; config: boolean }>('/api/account/import', data);
       const parts = [`${r.jobs} offre(s) ajoutée(s)`];

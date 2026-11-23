@@ -1,28 +1,52 @@
 /* Base commune à toutes les pages (variables, champs, boutons). Les styles propres à une page sont dans son composant. */
 :root {
-  --bg: #ffffff; --soft: #f6f7f9; --hover: #eef0f3; --line: #e5e7eb; --line-strong: #d1d5db;
-  --text: #111827; --muted: #6b7280; --faint: #9ca3af;
-  --accent: #2563eb; --accent-soft: #eff6ff; --accent-text: #1d4ed8;
-  --danger: #dc2626; --ok: #16a34a;
+  color-scheme: light;
+  --bg: #ffffff; --surface: #ffffff; --soft: #f6f7f9; --hover: #eef0f3; --canvas: #e9ebef;
+  --line: #e5e7eb; --line-strong: #d1d5db;
+  --text: #111827; --text-2: #374151; --muted: #6b7280; --faint: #9ca3af;
+  /* couleurs du logo : vert (principale), bleu du costume (secondaire) */
+  --accent: #238a2c; --accent-soft: #eaf8e6; --accent-text: #1a6d23; --accent-line: #b5e3ab;
+  --secondary: #3b5b8c; --secondary-soft: #e9eff8; --secondary-text: #2f4a75; --secondary-line: #c3d2e8;
+  --danger: #dc2626; --danger-soft: #fef2f2; --danger-text: #b91c1c;
+  --ok: #16a34a; --ok-soft: #f0fdf4; --ok-line: #bbf7d0; --ok-text: #15803d;
+  --warn: #b45309; --warn-soft: #fffbeb; --warn-line: #fde68a;
+  --tip: #111827; --overlay: rgba(17,24,39,.35);
   --radius: 10px; --shadow: 0 1px 2px rgba(16,24,40,.06); --shadow-lg: 0 12px 32px rgba(16,24,40,.14);
+}
+/* thème sombre : choisi dans la barre latérale (voir core/theme.ts), sinon réglage du système */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #101613; --surface: #1d2621; --soft: #161d19; --hover: #27322c; --canvas: #0a0f0c;
+  --line: #2a352f; --line-strong: #3d4a43;
+  --text: #e7ede9; --text-2: #c9d2cd; --muted: #98a59e; --faint: #6c7a73;
+  --accent: #2f9a38; --accent-soft: #17311b; --accent-text: #86de80; --accent-line: #2c5a31;
+  --secondary: #93b4ea; --secondary-soft: #1b2a41; --secondary-text: #aac6f2; --secondary-line: #304868;
+  --danger: #f87171; --danger-soft: #3a1c1c; --danger-text: #fca5a5;
+  --ok: #4ade80; --ok-soft: #13301e; --ok-line: #1f5a34; --ok-text: #86efac;
+  --warn: #fbbf24; --warn-soft: #33290f; --warn-line: #6b5518;
+  --tip: #33413a; --overlay: rgba(0,0,0,.6);
+  --shadow: 0 1px 2px rgba(0,0,0,.4); --shadow-lg: 0 12px 32px rgba(0,0,0,.55);
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body { margin: 0; font: 14px/1.45 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
-app-root { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* barre de navigation à gauche, page à droite ; sur écran étroit la barre passe en haut */
+app-root { flex: 1; min-height: 0; display: flex; flex-direction: row; }
+app-root > :not(app-side-nav) { min-width: 0; }
+@media (max-width: 860px) { app-root { flex-direction: column; } }
 input, select, textarea, button { font: inherit; color: inherit; }
-input, select, textarea { background: #fff; border: 1px solid var(--line-strong); border-radius: 8px; padding: 7px 10px; outline: none; transition: border-color .15s, box-shadow .15s; }
+input, select, textarea { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; padding: 7px 10px; outline: none; transition: border-color .15s, box-shadow .15s; }
 input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-button { cursor: pointer; border: 1px solid var(--line-strong); background: #fff; border-radius: 8px; padding: 7px 12px; font-weight: 500; transition: background .15s, border-color .15s; }
+button { cursor: pointer; border: 1px solid var(--line-strong); background: var(--surface); border-radius: 8px; padding: 7px 12px; font-weight: 500; transition: background .15s, border-color .15s; }
 button:hover { background: var(--soft); }
 button:disabled { opacity: .5; cursor: default; }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn-primary:hover { background: var(--accent-text); }
+.btn-primary:hover { background: var(--accent); filter: brightness(.9); }
 .btn-ghost { border-color: transparent; background: transparent; color: var(--muted); }
 .btn-ghost:hover { background: var(--hover); color: var(--text); }
 .btn-danger { color: var(--danger); border-color: transparent; background: transparent; }
-.btn-danger:hover { background: #fef2f2; }
-a { color: var(--accent); text-decoration: none; }
+.btn-danger:hover { background: var(--danger-soft); }
+a { color: var(--secondary); text-decoration: none; }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
 .hidden { display: none !important; }
