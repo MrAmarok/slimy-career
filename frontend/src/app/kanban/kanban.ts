@@ -2,15 +2,15 @@ import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cd
 import { Component, ElementRef, WritableSignal, afterRenderEffect, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { UserMenu } from '../core/user-menu';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AddJobDialog } from './add-job-dialog';
 import { CompaniesTable, CompanySort } from './companies-table';
 import { JobDrawer } from './job-drawer';
-import { KanbanStore, safeStorage } from './kanban-store';
+import { KanbanStore } from './kanban-store';
 import { Job, collator, companyOf, countBy, dateKey, plural, relativeDate, siteName, sourceOf, statusColor } from './models';
 import { SearchDrawer } from './search-drawer';
 import { SettingsTab } from './settings-tab';
+import { FilterMenu } from './filter-menu';
 import { DOT_CSS, PILL_CSS, TAG_CSS } from './shared-styles';
 
 type View = 'kanban' | 'entreprises' | 'parametres';
@@ -79,7 +79,7 @@ function toCard(job: Job): Card {
 /** Page principale : tableau des candidatures, entreprises et paramètres de recherche. */
 @Component({
   selector: 'app-kanban',
-  imports: [FormsModule, RouterLink, CdkDropListGroup, CdkDropList, CdkDrag, UserMenu, JobDrawer, SearchDrawer, SettingsTab, AddJobDialog, CompaniesTable],
+  imports: [FormsModule, FilterMenu, CdkDropListGroup, CdkDropList, CdkDrag, JobDrawer, SearchDrawer, SettingsTab, AddJobDialog, CompaniesTable],
   providers: [KanbanStore],
   templateUrl: './kanban.html',
   styleUrl: './kanban.css',
@@ -109,18 +109,20 @@ export class Kanban {
   /* ---------- filtres ---------- */
   protected readonly q = signal('');
   protected readonly country = signal('');
-  protected readonly city = signal('');
+  /** villes retenues : une offre passe si elle est dans l'une d'elles */
+  protected readonly cities = signal<StringSet>(new Set());
   protected readonly company = signal('');
   protected readonly source = signal('');
-  protected readonly skillSearch = signal('');
   protected readonly cats = signal<StringSet>(new Set());
+  /** n'afficher que les offres qu'aucune catégorie n'a attrapées */
+  protected readonly noCat = signal(false);
+  protected readonly noCatCount = computed(() => this.store.jobs().filter((j) => !j.categories.length).length);
   protected readonly zones = signal<StringSet>(new Set());
   protected readonly tags = signal<StringSet>(new Set());
   protected readonly skills = signal<StringSet>(new Set());
   /** toujours les plus récentes en premier à l'ouverture */
   protected readonly sort = signal<SortKey>('date');
   protected readonly companySort = signal<CompanySort>({ key: 'count', desc: true });
-  protected readonly filtersOpen = signal(false);
 
   private readonly countryCounts = computed(() => countBy(this.store.jobs(), (j) => j.country));
   private readonly cityCounts = computed(() => {
@@ -147,20 +149,22 @@ export class Kanban {
   });
   protected readonly zoneList = computed(() => checklist(this.zoneCounts(), this.zones()));
   protected readonly tagList = computed(() => checklist(this.tagCounts(), this.tags()));
-  protected readonly skillList = computed(() => checklist(this.skillCounts(), this.skills(), this.skillSearch().trim().toLowerCase(), true));
+  protected readonly skillList = computed(() => checklist(this.skillCounts(), this.skills()));
   /** suggestions de lieux (zones de recherche puis villes), sans doublon */
   protected readonly zoneSuggestions = computed(() => [...new Set([...this.store.meta().zones, ...this.store.meta().cities])]);
 
   /** Offres qui passent les filtres, dans l'ordre de tri choisi. */
   protected readonly visible = computed(() => {
     const words = this.q().trim().toLowerCase().split(/\s+/).filter(Boolean);
-    const country = this.country(), city = this.city(), company = this.company(), src = this.source();
+    const country = this.country(), cities = this.cities(), company = this.company(), src = this.source();
+    const noCat = this.noCat();
     const cats = this.cats(), zones = this.zones(), tags = this.tags(), skills = [...this.skills()];
     const matches = (j: Job) => {
       if (country && j.country !== country) return false;
-      if (city && j.city !== city) return false;
+      if (cities.size && !(j.city && cities.has(j.city))) return false;
       if (company && companyOf(j) !== company) return false;
       if (src && !(j.source || '').startsWith(src)) return false;
+      if (noCat && j.categories.length) return false;
       if (cats.size && !j.categories.some((c) => cats.has(c))) return false;
       if (zones.size && !j.zones.some((z) => zones.has(z))) return false;
       if (tags.size && !j.tags.some((t) => tags.has(t))) return false;
@@ -195,8 +199,10 @@ export class Kanban {
     const items: ActiveFilter[] = [];
     const push = (label: string, value: string, clear: () => void) => items.push({ label, value, clear });
     if (this.q().trim()) push('Recherche', this.q().trim(), () => this.q.set(''));
+    if (this.noCat()) push('Catégorie', 'aucune', () => this.noCat.set(false));
+    this.cats().forEach((c) => push('Catégorie', c, () => this.toggle(this.cats, c, false)));
     if (this.country()) push('Pays', this.country(), () => this.setCountry(''));
-    if (this.city()) push('Ville', this.city(), () => this.city.set(''));
+    this.cities().forEach((c) => push('Ville', c, () => this.toggle(this.cities, c, false)));
     if (this.company()) push('Entreprise', this.company(), () => this.company.set(''));
     if (this.source()) push('Site', this.source(), () => this.source.set(''));
     this.zones().forEach((z) => push('Zone', z, () => this.toggle(this.zones, z, false)));
@@ -204,9 +210,6 @@ export class Kanban {
     this.skills().forEach((s) => push('Compétence', s, () => this.toggle(this.skills, s, false)));
     return items;
   });
-  /** nombre affiché sur le bouton « Filtres » (la recherche libre ne compte pas) */
-  protected readonly filterCount = computed(() => this.activeFilters().length - (this.q().trim() ? 1 : 0));
-
   /* ---------- multi-sélection ---------- */
   private readonly pickedRaw = signal<ReadonlySet<number>>(new Set());
   /** Cartes sélectionnées : seulement des offres visibles (pas d'action sur des offres masquées par un filtre). */
@@ -242,9 +245,6 @@ export class Kanban {
   private addDialog = viewChild.required(AddJobDialog);
 
   constructor() {
-    if (safeStorage.get('filters') === null) safeStorage.set('filters', innerWidth > 860 ? 'open' : 'closed');
-    this.filtersOpen.set(safeStorage.get('filters') === 'open');
-
     // une valeur de filtre qui n'existe plus dans les offres (après rechargement, suppression…) est retirée
     effect(() => {
       this.store.jobs();
@@ -275,7 +275,9 @@ export class Kanban {
   /* ---------- filtres ---------- */
   protected setCountry(country: string) {
     this.country.set(country);
-    if (!this.cityCounts().has(this.city())) this.city.set('');
+    // les villes d'un autre pays ne sont plus proposées : elles sortent de la sélection
+    const counts = this.cityCounts();
+    if ([...this.cities()].some((c) => !counts.has(c))) this.cities.set(new Set([...this.cities()].filter((c) => counts.has(c))));
   }
 
   protected toggle(set: WritableSignal<StringSet>, value: string, on?: boolean) {
@@ -287,16 +289,45 @@ export class Kanban {
 
   protected clearCats() {
     this.cats.set(new Set());
+    this.noCat.set(false);
   }
 
-  protected toggleFilters() {
-    this.filtersOpen.update((open) => !open);
-    safeStorage.set('filters', this.filtersOpen() ? 'open' : 'closed');
+  protected toggleCat(name: string) {
+    this.noCat.set(false);
+    this.toggle(this.cats, name);
+  }
+
+  /** « Sans catégorie » : exclusif avec les autres catégories */
+  protected toggleNoCat() {
+    const on = !this.noCat();
+    this.cats.set(new Set());
+    this.noCat.set(on);
+  }
+
+  /** depuis les paramètres : montre dans le tableau les offres sans catégorie */
+  protected showUncategorized() {
+    this.resetFilters();
+    this.noCat.set(true);
+    this.router.navigate([], { fragment: 'kanban' });
+  }
+
+  protected clear(set: WritableSignal<StringSet>) {
+    set.set(new Set());
+  }
+
+  /** sélection d'un filtre à choix unique, sous la forme attendue par le menu */
+  protected one(value: string): string[] {
+    return value ? [value] : [];
+  }
+
+  protected list(set: StringSet): string[] {
+    return [...set];
   }
 
   protected resetFilters() {
-    for (const text of [this.q, this.country, this.city, this.company, this.source, this.skillSearch]) text.set('');
-    for (const set of [this.cats, this.tags, this.zones, this.skills]) set.set(new Set());
+    for (const text of [this.q, this.country, this.company, this.source]) text.set('');
+    for (const set of [this.cats, this.cities, this.tags, this.zones, this.skills]) set.set(new Set());
+    this.noCat.set(false);
   }
 
   private pruneFilters() {
@@ -304,13 +335,14 @@ export class Kanban {
       if (value() && !counts.has(value())) value.set('');
     };
     keep(this.country, this.countryCounts());
-    keep(this.city, this.cityCounts());
     keep(this.company, this.companyCounts());
     keep(this.source, this.sourceCounts());
     const keepAll = (set: WritableSignal<StringSet>, counts: Map<string, number>) => {
       if ([...set()].some((v) => !counts.has(v))) set.set(new Set([...set()].filter((v) => counts.has(v))));
     };
     keepAll(this.cats, this.catCounts());
+    keepAll(this.cities, this.cityCounts());
+    if (this.noCat() && !this.noCatCount()) this.noCat.set(false);
     keepAll(this.zones, this.zoneCounts());
     keepAll(this.tags, this.tagCounts());
     keepAll(this.skills, this.skillCounts());
