@@ -31,47 +31,47 @@ function suggestions(values: string[], chosen: string[], limit = Infinity): Sugg
       <div class="drawer-head">
         <div style="flex:1">
           <h2>Chercher des offres</h2>
-          <div class="muted small" style="margin-top:3px">Pré-rempli avec tes paramètres. Une offre n'a pas besoin de tout cocher : chaque recherche, tag ou compétence est cherché séparément.</div>
+          <div class="muted small" style="margin-top:3px">L'application tape tes recherches sur les sites d'emploi et range les offres trouvées dans « À trier ».</div>
         </div>
         <button class="btn-ghost" title="Fermer (Échap)" style="font-size:18px; padding:2px 9px" (click)="close()">×</button>
       </div>
       <div class="drawer-body" #body>
         <div class="sd-section">
-          <h4>Quoi chercher <span class="hint">recherches complètes, envoyées telles quelles</span></h4>
-          <app-chip-editor placeholder="ex : stage développeur python" list="dl-tags" [(values)]="searches" (changed)="planSoon()" />
-        </div>
-        <div class="sd-section">
-          <h4>Type de contrat <span class="hint">ajouté devant chaque tag et compétence</span></h4>
+          <h4><span class="num">1</span>Quel contrat ?</h4>
           <div class="contract-pills">
             @for (c of contracts; track c) {
               <button type="button" class="pill" [class.on]="contract().toLowerCase() === c.toLowerCase()" (click)="contract.set(c); planSoon()">
-                {{ c ? c[0].toUpperCase() + c.slice(1) : 'Aucun' }}
+                {{ c ? c[0].toUpperCase() + c.slice(1) : 'Peu importe' }}
               </button>
             }
           </div>
         </div>
         <div class="sd-section">
-          <h4>Tags <span class="hint">domaines, chacun cherché séparément</span></h4>
-          <app-chip-editor placeholder="Ajouter un tag…" list="dl-cats" [(values)]="tags" (changed)="planSoon()" />
-          <div class="suggest">
-            @for (s of tagSuggestions(); track s.value) {
-              <button type="button" class="pill" [class.on]="s.on" (click)="toggle(tags, s)">{{ s.value }}</button>
-            }
-          </div>
-        </div>
-        <div class="sd-section">
-          <h4>Compétences <span class="hint">lesquelles chercher ?</span></h4>
-          <app-chip-editor placeholder="Ajouter une compétence…" list="dl-skills" [(values)]="skills" (changed)="planSoon()" />
-          <input type="search" placeholder="Filtrer les suggestions…" style="width:100%; margin-top:8px" [(ngModel)]="skillFilter" />
-          <div class="suggest">
+          <h4><span class="num">2</span>Quels mots-clés ?</h4>
+          <p class="help">Un métier, un domaine ou une technologie. Chaque mot-clé fait l'objet d'une recherche à part{{ contract() ? ', précédé du contrat' : '' }} : {{ example() }}.</p>
+          <app-chip-editor placeholder="ex : développeur, DevOps, Python…  (Entrée pour ajouter)" list="dl-skills" [(values)]="keywords" (changed)="planSoon()" />
+          @if (categorySuggestions().length) {
+            <div class="suggest"><span class="suggest-label">Tes catégories</span>
+              @for (s of categorySuggestions(); track s.value) {
+                <button type="button" class="pill" [class.on]="s.on" (click)="toggle(keywords, s)">{{ s.value }}</button>
+              }
+            </div>
+          }
+          <div class="suggest"><span class="suggest-label">Compétences</span>
             @for (s of skillSuggestions(); track s.value) {
-              <button type="button" class="pill" [class.on]="s.on" (click)="toggle(skills, s)">{{ s.value }}</button>
+              <button type="button" class="pill" [class.on]="s.on" (click)="toggle(keywords, s)">{{ s.value }}</button>
             }
           </div>
+          <details class="exact" [open]="exactOpen()">
+            <summary>Ajouter une recherche exacte (facultatif)</summary>
+            <p class="help">Une phrase envoyée telle quelle aux sites, sans le contrat devant. Utile pour une recherche précise : « alternance développeur Rust ».</p>
+            <app-chip-editor placeholder="ex : stage développeur python" list="dl-tags" [(values)]="searches" (changed)="planSoon()" />
+          </details>
         </div>
         <div class="sd-section">
-          <h4>Où <span class="hint">villes, régions ou pays</span></h4>
-          <app-chip-editor placeholder="ex : Toulouse" list="dl-zones" [(values)]="locations" (changed)="planSoon()" />
+          <h4><span class="num">3</span>Où ?</h4>
+          <p class="help">Villes, régions ou pays. Chaque recherche est refaite dans chaque lieu.</p>
+          <app-chip-editor placeholder="ex : Toulouse, Occitanie, France" list="dl-zones" [(values)]="locations" (changed)="planSoon()" />
           <div class="suggest">
             @for (s of locationSuggestions(); track s.value) {
               <button type="button" class="pill" [class.on]="s.on" (click)="toggle(locations, s)">{{ s.value }}</button>
@@ -79,33 +79,39 @@ function suggestions(values: string[], chosen: string[], limit = Infinity): Sugg
           </div>
         </div>
         <div class="sd-section">
-          <h4>Sites</h4>
+          <h4><span class="num">4</span>Sur quels sites ?</h4>
           <div class="checks" style="margin-top:0">
             @for (site of availableSites(); track site) {
-              <label [attr.title]="site === 'google' && !config()?.google_available ? 'Ignoré sans clé SerpAPI (voir Paramètres)' : null">
+              <label [class.off]="site === 'google' && !config()?.google_available">
                 <input type="checkbox" [checked]="sites().has(site)" (change)="toggleSite(site, $any($event.target).checked)" />{{ siteLabel(site) }}
+                @if (site === 'google' && !config()?.google_available) {
+                  <span class="muted small">(clé à ajouter dans Paramètres)</span>
+                }
               </label>
             }
           </div>
         </div>
         <div class="plan">
+          <div class="plan-title">Ce qui va être lancé</div>
           @if (plan(); as p) {
-            <div class="total">{{ planTotal(p) }}</div>
+            <div class="total">{{ p.steps }} recherche{{ plural(p.steps) }} <span class="muted">· {{ duration(p) }}</span></div>
+            <div class="muted small">{{ planDetail(p) }}</div>
+            <div class="plan-label">Ce qui sera tapé sur chaque site :</div>
             <div class="queries">
               @for (q of p.queries; track $index) {
-                <span class="tag" [title]="'tag : ' + q.tag">{{ q.query }}</span>
+                <span class="tag">{{ q.query }}</span>
               }
             </div>
             @if (p.steps > 40) {
-              <div class="warn">C'est beaucoup : compte environ {{ minutes(p) }} min. Tu peux continuer à utiliser le tableau pendant ce temps.</div>
+              <div class="warn">C'est beaucoup. Retire des mots-clés ou des lieux pour aller plus vite ; tu peux continuer à utiliser le tableau pendant la recherche.</div>
             }
           } @else {
-            {{ planText() }}
+            <div class="muted">{{ planText() }}</div>
           }
         </div>
       </div>
       <div class="drawer-foot">
-        <label class="remember"><input type="checkbox" [(ngModel)]="remember" /> Garder ces choix pour la prochaine fois</label>
+        <label class="remember" title="Ces choix deviennent ta recherche par défaut (modifiable dans Paramètres)"><input type="checkbox" [(ngModel)]="remember" /> Retenir ces choix</label>
         <span class="spacer"></span>
         <button class="btn-ghost" (click)="close()">Annuler</button>
         <button class="btn-primary" [disabled]="startDisabled()" (click)="start()">{{ startLabel() }}</button>
@@ -118,17 +124,26 @@ function suggestions(values: string[], chosen: string[], limit = Infinity): Sugg
     TAG_CSS,
     CHECKS_CSS,
     `
-    .sd-section h4 { display: flex; align-items: baseline; gap: 8px; }
-    .sd-section h4 .hint { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--faint); font-size: 12px; }
-    .suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .sd-section h4 { display: flex; align-items: center; gap: 8px; font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--text); margin-bottom: 8px; }
+    .num { width: 20px; height: 20px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+    .help { margin: 0 0 8px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+    .suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+    .suggest-label { font-size: 12px; color: var(--muted); margin-right: 2px; flex-basis: 100%; }
+    .exact { margin-top: 12px; border-top: 1px dashed var(--line-strong); padding-top: 10px; }
+    .exact summary { cursor: pointer; font-size: 13px; color: var(--secondary); font-weight: 500; }
+    .exact .help { margin-top: 8px; }
+    .checks label.off { color: var(--muted); }
     .suggest .pill { font-size: 12px; padding: 3px 10px; }
     .suggest .pill::before { content: "+ "; color: var(--faint); }
     .suggest .pill.on::before { content: "✓ "; color: var(--accent-text); }
     .contract-pills { display: flex; flex-wrap: wrap; gap: 6px; }
-    .plan { background: var(--soft); border-radius: 10px; padding: 12px 14px; font-size: 13px; }
-    .plan .total { font-weight: 600; }
-    .plan .queries { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; max-height: 120px; overflow-y: auto; }
-    .plan .warn { color: #b45309; margin-top: 6px; font-size: 12px; }
+    .plan { background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+    .plan-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+    .plan .total { font-weight: 600; font-size: 15px; }
+    .plan .total .muted { font-weight: 400; font-size: 13px; }
+    .plan-label { margin-top: 10px; font-size: 12px; color: var(--muted); }
+    .plan .queries { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; max-height: 120px; overflow-y: auto; }
+    .plan .warn { color: var(--warn); margin-top: 6px; font-size: 12px; }
     .remember { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
     .remember input { accent-color: var(--accent); }
     `,
@@ -140,16 +155,16 @@ export class SearchDrawer {
 
   protected readonly contracts = CONTRACTS;
   protected readonly siteLabel = siteName;
+  protected readonly plural = plural;
 
   protected readonly config = signal<SearchConfig | null>(null);
   protected readonly searches = signal<string[]>([]);
-  protected readonly tags = signal<string[]>([]);
-  protected readonly skills = signal<string[]>([]);
+  /** mots-clés : métiers, domaines ou technologies, chacun cherché à part (précédé du contrat) */
+  protected readonly keywords = signal<string[]>([]);
   protected readonly locations = signal<string[]>([]);
   protected readonly contract = signal('stage');
   protected readonly availableSites = signal<string[]>([]);
   protected readonly sites = signal<ReadonlySet<string>>(new Set());
-  protected readonly skillFilter = signal('');
   protected readonly remember = signal(true);
 
   protected readonly plan = signal<ScrapePlan | null>(null);
@@ -157,21 +172,26 @@ export class SearchDrawer {
   protected readonly startDisabled = signal(false);
   protected readonly startLabel = signal('Lancer');
 
-  /** tags : catégories automatiques d'abord, puis les tags déjà utilisés */
-  protected readonly tagSuggestions = computed(() => {
+  protected readonly exactOpen = signal(false);
+
+  /** catégories du tableau : un clic cherche les mots de leur nom (« DevOps / Cloud » : « DevOps » et « Cloud ») */
+  protected readonly categorySuggestions = computed(() => {
     const c = this.config();
-    return c ? suggestions([...Object.keys(c.categories), ...c.search_tags], this.tags()) : [];
+    return c ? suggestions(Object.keys(c.categories), this.keywords()) : [];
   });
   /** compétences : les plus fréquentes dans tes offres d'abord, puis le reste de la liste */
   protected readonly skillSuggestions = computed(() => {
     const c = this.config();
     if (!c) return [];
     const counts = countBy(this.store.jobs(), (j) => j.skills);
-    const q = this.skillFilter().trim().toLowerCase();
-    const list = [...c.skills]
-      .sort((a, b) => (counts.get(b) || 0) - (counts.get(a) || 0) || collator.compare(a, b))
-      .filter((s) => !q || s.toLowerCase().includes(q));
-    return suggestions(list, this.skills(), q ? Infinity : 20);
+    const list = [...c.skills].sort((a, b) => (counts.get(b) || 0) - (counts.get(a) || 0) || collator.compare(a, b));
+    return suggestions(list, this.keywords(), 14);
+  });
+  /** exemple de ce qui est tapé sur les sites, avec le contrat et le premier mot-clé choisis */
+  protected readonly example = computed(() => {
+    // un nom de catégorie « DevOps / Cloud » est cherché mot par mot
+    const word = (this.keywords()[0] || 'DevOps').split('/')[0].trim();
+    return `« ${[this.contract(), word].filter(Boolean).join(' ')} »`;
   });
   protected readonly locationSuggestions = computed(() => {
     const c = this.config();
@@ -203,11 +223,11 @@ export class SearchDrawer {
     this.config.set(c);
     this.editors().forEach((e) => e.clearInput());
     this.searches.set(c.searches);
-    this.tags.set(c.search_tags);
-    this.skills.set(c.search_skills);
+    // tags et compétences de recherche sont une seule liste : ils sont cherchés de la même façon
+    this.keywords.set(suggestions([...c.search_tags, ...c.search_skills], []).map((s) => s.value));
+    this.exactOpen.set(c.searches.length > 0);
     this.locations.set(c.locations);
     this.contract.set(c.contract);
-    this.skillFilter.set('');
     this.availableSites.set(res.available_sites);
     this.sites.set(new Set(c.sites));
     await this.updatePlan();
@@ -239,13 +259,14 @@ export class SearchDrawer {
     this.planTimer = setTimeout(() => this.updatePlan(), 250);
   }
 
-  protected planTotal(p: ScrapePlan): string {
+  protected planDetail(p: ScrapePlan): string {
     const n = p.queries.length;
-    return `${n} requête${plural(n)} × ${p.locations} zone${plural(p.locations)} × ${p.sites} site${plural(p.sites)} = ${p.steps} recherche${plural(p.steps)}`;
+    return `${n} recherche${plural(n)} différente${plural(n)} × ${p.locations} lieu${p.locations > 1 ? 'x' : ''} × ${p.sites} site${plural(p.sites)}`;
   }
 
-  protected minutes(p: ScrapePlan): number {
-    return Math.round(p.steps * 0.4);
+  protected duration(p: ScrapePlan): string {
+    const minutes = Math.round(p.steps * 0.4);
+    return minutes < 1 ? "moins d'une minute" : `environ ${minutes} min`;
   }
 
   private request() {
@@ -253,8 +274,8 @@ export class SearchDrawer {
     this.editors().forEach((e) => e.flush());
     return {
       searches: this.searches(),
-      search_tags: this.tags(),
-      search_skills: this.skills(),
+      search_tags: this.keywords(),
+      search_skills: [],
       locations: this.locations(),
       contract: this.contract(),
       sites: this.availableSites().filter((s) => this.sites().has(s)),
@@ -287,8 +308,8 @@ export class SearchDrawer {
     if (id !== this.planRequest) return; // une demande plus récente est partie entre-temps
     const running = this.store.scrapeRunning();
     this.startDisabled.set(!plan.queries.length || running);
-    this.startLabel.set(running ? 'Une recherche tourne déjà' : `Lancer ${plan.steps} recherche${plural(plan.steps)}`);
-    if (!plan.queries.length) this.showText('Ajoute au moins une recherche, un tag ou une compétence.');
+    this.startLabel.set(running ? 'Une recherche tourne déjà' : plan.steps ? `Lancer ${plan.steps} recherche${plural(plan.steps)}` : 'Lancer');
+    if (!plan.queries.length) this.showText('Ajoute au moins un mot-clé pour lancer une recherche.');
     else this.plan.set(plan);
   }
 
