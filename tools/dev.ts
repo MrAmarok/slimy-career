@@ -115,7 +115,7 @@ async function scraper(): Promise<Service> {
 }
 
 function backend(): Service {
-  need("mvn", "Java 21 et Maven sont nécessaires pour le serveur (voir docs/developpement.md pour s'en passer).");
+  need("mvn", "Java 21 et Maven sont nécessaires pour le serveur (voir docs/development.md pour s'en passer).");
   const env = {
     ...process.env,
     PORT: BACKEND_PORT,
