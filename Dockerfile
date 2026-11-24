@@ -17,7 +17,7 @@ COPY --from=frontend /app/dist/frontend/browser ./src/main/resources/static
 RUN mvn -q -B package -DskipTests
 
 # ---- 3. image finale : uniquement Java (la recherche d'offres tourne dans un conteneur à part, voir scraper/) ----
-FROM eclipse-temurin:21-jre@sha256:d77e090ae1f6970c047b443c6f0a6c1358b0426d44432bb5a7753408cd43de0d
+FROM eclipse-temurin:25-jre@sha256:4ed132f6832e9804b123e89a849a7b4502756ae64a4ee08ebab939d9d5d0a9fa
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata \
     && rm -rf /var/lib/apt/lists/*
