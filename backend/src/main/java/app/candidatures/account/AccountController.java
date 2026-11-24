@@ -1,7 +1,6 @@
 package app.candidatures.account;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -81,7 +80,7 @@ public class AccountController {
             config.remove("deepl_key");
             settings.save(user.id(), config);
         }
-        Map<Long, Long> jobIds = new HashMap<>();   // ancien id -> nouvel id, pour rattacher les CV à leur offre
+        Map<Long, Long> jobIds = new HashMap<>(); 
         int addedJobs = 0;
         int skippedJobs = 0;
         List<Object> importedJobs = Values.list(data.get("jobs"));

@@ -48,8 +48,8 @@ final class RequestLimitFilter extends OncePerRequestFilter {
             new Rule("POST", "/api/cvs/import", 6, 21 * MB),
             new Rule("POST", "/api/cv/check", 12, 3 * MB),
             new Rule("POST", "/api/cv/translate", 12, 3 * MB),
-            new Rule("POST", "/api/cv/", 120, 3 * MB),          // aperçu PDF en direct, lecture ATS
-            new Rule("", "/api/cvs", 240, 3 * MB),             // enregistrement automatique du CV (photo comprise)
+            new Rule("POST", "/api/cv/", 120, 3 * MB),         
+            new Rule("", "/api/cvs", 240, 3 * MB),
             new Rule("POST", "/api/scrape/plan", 120, 64 * 1024),
             new Rule("POST", "/api/scrape/stop", 30, 16 * 1024),
             new Rule("POST", "/api/scrape", 6, 64 * 1024),

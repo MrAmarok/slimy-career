@@ -1,140 +1,92 @@
-# Candidatures — recherche d'offres, kanban et éditeur de CV
+<p align="center">
+  <img src="frontend/public/logo.png" alt="Logo de Slimy Career" width="160">
+</p>
 
-Récupère les offres sur LinkedIn, HelloWork, Indeed et Google Jobs à partir de mots-clés, les range dans un
-kanban de candidatures, et fournit un éditeur de CV avec export PDF lisible par les logiciels RH (ATS).
+<h1 align="center">Slimy Career</h1>
 
-Chaque utilisateur a son compte : son tableau, ses CV et ses paramètres de recherche sont séparés.
+<p align="center">
+  L'application qui t'aide à trouver un travail : elle cherche les offres à ta place,<br>
+  t'aide à suivre tes candidatures et à préparer un CV pour chacune.
+</p>
 
-| Partie | Technologie | Dossier |
-|---|---|---|
-| Interface | Angular 22 (composants autonomes, signaux, CDK drag-drop) | `frontend/` |
-| Serveur | Spring Boot 4 (Java 21), Spring Security, JDBC + Flyway | `backend/` |
-| Base | PostgreSQL 17 | — |
-| PDF du CV | Apache PDFBox (génération et import) | `backend/…/cv/` |
-| Recherche d'offres | service Python isolé (conteneur à part, sans secret) | `scraper/` |
-| Déploiement | Docker Compose + tunnel Cloudflare (HTTPS) | `Dockerfile`, `docker-compose.yml` |
+![Le tableau de suivi des candidatures](docs/images/tableau.png)
 
-## Déploiement
+<details>
+<summary>Thème sombre</summary>
 
-Il faut Docker, et pour l'accès depuis Internet : un nom de domaine géré par Cloudflare.
+![Le tableau en thème sombre](docs/images/tableau-sombre.png)
 
-1. **Configuration** : `cp .env.example .env`, puis remplir `POSTGRES_PASSWORD` (`openssl rand -hex 24`),
-   `APP_ADMIN_PASSWORD` (mot de passe du premier compte, `admin` par défaut) et `APP_SECRET_KEY`
-   (`openssl rand -hex 32`, à ne jamais changer ensuite : elle chiffre les secrets rangés en base). `SERPAPI_KEY` (Google Jobs) est facultative.
-   La clé DeepL (traduction du CV) ne se met pas ici : chaque utilisateur saisit la sienne dans l'application.
-2. **Démarrage local** : `docker compose up -d --build`, puis ouvrir http://localhost:8080. Le port n'est ouvert
-   que sur la machine elle-même.
-3. **Tunnel Cloudflare** : dans Zero Trust > Networks > Tunnels, créer un tunnel, choisir « Docker » et copier le
-   jeton (la valeur après `--token`) dans `CLOUDFLARE_TUNNEL_TOKEN`. Ajouter un « public hostname » qui pointe vers
-   le service `http://app:8080`. Puis : `docker compose --profile tunnel up -d --build`.
-   Cloudflare fournit le certificat HTTPS ; aucun port n'est à ouvrir sur la box.
-4. **Comptes** : se connecter avec le compte administrateur, puis « Mon compte » > « Comptes » pour créer les
-   autres utilisateurs (il n'y a pas d'inscription libre). Chacun peut changer son mot de passe au même endroit.
-5. **Double authentification** : dans « Mon compte », chacun peut l'activer en scannant un QR code avec Google
-   Authenticator (ou une application équivalente). À faire au moins pour le compte administrateur.
+</details>
 
-Mise à jour : `git pull` puis `docker compose --profile tunnel up -d --build`. Les données sont dans le volume
-Docker `db-data` et ne sont pas touchées.
+## À quoi ça sert
 
-### Reprendre les données de l'ancienne version (Flask + SQLite)
+Chercher un emploi, c'est refaire chaque jour les mêmes recherches sur plusieurs sites, perdre le fil de ce qu'on a
+déjà vu, et adapter son CV à chaque annonce. Slimy Career regroupe tout cela au même endroit :
 
-```bash
-python3 tools/export_legacy.py jobs.db config.toml > sauvegarde-ancienne-version.json
-```
+- **les offres** de plusieurs sites, réunies et sans doublon ;
+- **un tableau de suivi** pour savoir où en est chaque candidature ;
+- **un éditeur de CV**, avec un PDF que les logiciels de recrutement savent lire.
 
-Puis dans l'application : « Mon compte » > « Importer une sauvegarde ». Offres (statuts, notes), CV et paramètres de
-recherche sont repris ; les clés d'API ne sont pas exportées (elles vont dans `.env`).
+L'application s'installe chez soi et se partage entre proches : chacun a son compte, avec son propre tableau, ses
+CV et ses réglages.
 
-### Sauvegardes
+## Comment ça marche
 
-- Par compte : « Mon compte » > « Télécharger une sauvegarde » (fichier JSON, réimportable).
-- Toute la base : `docker compose exec db pg_dump -U candidatures candidatures > sauvegarde.sql`
+1. **Tu décris ce que tu cherches.** Dans les paramètres : les métiers ou mots-clés, le type de contrat, les villes
+   ou régions, et les sites à consulter.
+2. **L'application cherche pour toi.** Un clic sur « Chercher des offres » lance toutes les recherches. Les offres
+   trouvées arrivent dans la colonne « À trier », avec leur description, l'entreprise, le lieu et les compétences
+   demandées. Relancer une recherche n'efface rien : seules les nouvelles offres s'ajoutent.
+3. **Tu tries.** Tu fais glisser chaque offre d'une colonne à l'autre : À trier, Intéressé, Postulé, En attente,
+   Entretien, Refusé, Pas intéressé. Des filtres (ville, entreprise, compétences, mots-clés…) aident à s'y
+   retrouver, et tu peux ajouter des notes sur chaque offre.
+4. **Tu prépares ton CV.** L'éditeur montre le résultat en direct. Tu peux importer un CV existant, choisir un
+   style, corriger les fautes, le traduire en anglais, et l'adapter à une offre du tableau : l'application indique
+   les compétences de l'annonce qui manquent dans ton CV.
+5. **Tu postules et tu suis.** Le lien de chaque offre renvoie vers l'annonce d'origine, où tu postules toi-même.
+   Le tableau garde la trace de la suite, et la page « Entreprises » résume tes candidatures par entreprise.
 
-## Sécurité
+Une offre trouvée ailleurs (bouche-à-oreille, site d'une entreprise) s'ajoute à la main avec « Ajouter une offre ».
 
-- **Sessions** : changer un mot de passe ferme toutes les sessions du compte ; un compte supprimé est déconnecté
-  à sa requête suivante. Activer ou retirer la double authentification ferme les autres sessions.
-- **Double authentification** : code à 6 chiffres (TOTP) demandé après le mot de passe ; un code ne sert qu'une fois.
-  Le secret est chiffré en base avec `APP_SECRET_KEY`. Téléphone perdu : un administrateur retire la double
-  authentification du compte dans « Comptes ». Si c'est le seul administrateur :
-  `docker compose exec db psql -U candidatures -c "UPDATE users SET totp_secret = NULL, session_version = session_version + 1 WHERE username = 'admin'"`
-- **Tentatives de connexion** : 8 échecs bloquent 5 minutes (par adresse et identifiant). L'adresse du visiteur est
-  lue dans l'en-tête `CF-Connecting-IP`, écrit par Cloudflare (`APP_CLIENT_IP_HEADER`), jamais dans `X-Forwarded-For`.
-- **Limites** : taille des requêtes (1 Mo, 3 Mo pour un CV, 30 Mo pour l'import d'une sauvegarde) et nombre de
-  requêtes par minute, avec des plafonds plus bas pour les opérations coûteuses (`RequestLimitFilter`).
-- **Recherche d'offres isolée** : le service `scraper` visite des sites tiers, donc il tourne dans un conteneur
-  sans aucun secret, sans accès à la base, en lecture seule. Google Jobs, qui demande une clé, est interrogé par le
-  serveur lui-même.
-- **Clés d'API** (DeepL, SerpAPI) : chiffrées en base avec `APP_SECRET_KEY`, jamais renvoyées au navigateur ni
-  incluses dans les sauvegardes.
-- **Dépendances** : bibliothèques Python figées avec leurs empreintes (`scraper/requirements.txt`, généré depuis
-  `requirements.in`), images Docker épinglées, mises à jour proposées par Dependabot (`.github/dependabot.yml`).
-- **Navigateur** : Content-Security-Policy (aucun script externe ou en ligne), liens d'offres limités à
-  `http(s)://`.
+## D'où viennent les offres
 
-## Utilisation
-
-- **Tableau** : glisser-déposer les cartes entre colonnes (À trier, Intéressé, Postulé, En attente, Entretien,
-  Refusé, Pas intéressé) ; clic sur une carte pour la description, le lien, les notes, les tags et compétences ;
-  filtres par catégorie, texte, pays, ville, entreprise, site, tags, zone et compétences ; sélection multiple.
-- **Chercher des offres** : lance la recherche sur les sites choisis, avec suivi en direct. Relancer n'écrase rien :
-  une offre déjà connue (même lien) garde son statut et ses notes, seuls ses tags et zones sont complétés.
-- **Ajouter une offre** : saisie manuelle (seul le titre est obligatoire) ; compétences, catégorie et pays sont détectés.
-- **Entreprises** : nombre d'offres et de candidatures par entreprise.
-- **Paramètres** : zones, recherches, sites, compétences à détecter, catégories automatiques (par utilisateur).
-- **CV** : sections réordonnables, trois styles (Moderne, Tech, Classique), aperçu PDF en direct, une page par
-  défaut (mise en page resserrée automatiquement si besoin), import d'un CV PDF existant, vérification de la lecture
-  ATS, correcteur (LanguageTool), traduction en anglais (DeepL), adaptation du CV à une offre du tableau.
-
-Le correcteur envoie le texte rédigé à api.languagetool.org ; pour tout garder en interne, lancer un serveur
-LanguageTool et mettre son adresse dans la variable `LANGUAGETOOL_URL` du service `app`.
-
-## Sources d'offres
-
-| Site | Méthode | Remarques |
-|---|---|---|
-| LinkedIn | endpoints publics « guest » | sans compte ; LinkedIn limite le débit (429), le script attend et réessaie |
-| HelloWork | page de recherche + JSON-LD de chaque offre | fournit aussi des compétences |
-| Indeed | librairie `python-jobspy` | |
-| Google Jobs | API SerpAPI, appelée par le serveur Java | clé gratuite sur serpapi.com (100 recherches/mois) |
-
-Les recherches partent de l'adresse IP de la machine qui héberge l'application (pas de Cloudflare). Les sites
-changent leur HTML de temps en temps : si un site renvoie 0 offre sur toutes les recherches, c'est probablement
-son script dans `scraper/scrapers/` qui doit être mis à jour.
-
-## Développement
-
-```bash
-# base de données
-docker run -d --name candidatures-db -p 5432:5432 -e POSTGRES_DB=candidatures \
-  -e POSTGRES_USER=candidatures -e POSTGRES_PASSWORD=candidatures postgres:17-alpine
-
-# service de recherche d'offres (http://localhost:8000)
-python3 -m venv .venv && .venv/bin/pip install -r scraper/requirements.txt
-.venv/bin/python scraper/server.py
-
-# serveur (http://localhost:8080) — Java 21 et Maven
-cd backend && APP_ADMIN_PASSWORD=changeme-123 APP_SECRET_KEY=dev-seulement mvn spring-boot:run
-
-# interface (http://localhost:4200, les appels /api sont relayés vers le serveur)
-cd frontend && npm install && npm start
-```
-
-Tests du serveur : `cd backend && mvn test`. Sans Java ni Maven sur la machine :
-
-```bash
-docker run --rm -v "$PWD/backend":/w -w /w maven:3.9-eclipse-temurin-21 mvn test
-```
-
-### Organisation du serveur (`backend/src/main/java/app/candidatures/`)
-
-| Paquet | Rôle |
+| Site | Ce que l'application y consulte |
 |---|---|
-| `auth` | comptes, sessions et leur révocation, double authentification, CSRF, limites de requêtes |
-| `jobs` | offres, détection des compétences / catégories / pays, plan de recherche |
-| `scrape` | appelle le service de recherche, interroge Google Jobs, enregistre les offres trouvées |
-| `settings` | paramètres de recherche de chaque utilisateur |
-| `cv` | CV, import PDF, correcteur et traduction ; `cv/pdf` : moteur de mise en page et génération du PDF |
-| `account` | export / import des données d'un compte |
+| **LinkedIn** | les annonces publiques, visibles sans être connecté |
+| **HelloWork** | les résultats de recherche et le détail de chaque annonce |
+| **Indeed** | les résultats de recherche |
+| **Google Jobs** | les annonces regroupées par Google (facultatif, demande une clé gratuite) |
 
-Le schéma de la base est dans `backend/src/main/resources/db/migration/` (Flyway).
+À savoir :
+
+- L'application ne lit que des **annonces publiques**. Elle n'a pas besoin de tes comptes sur ces sites et ne s'y
+  connecte jamais à ta place.
+- Elle **ne postule pas pour toi** et ne contacte aucun recruteur.
+- Les recherches partent de la machine où l'application est installée, à ta demande uniquement.
+- Ces sites peuvent changer ou limiter les consultations : il arrive qu'un site ne renvoie rien pendant un moment.
+
+## Tes données
+
+Offres, notes et CV sont enregistrés sur la machine où l'application est installée, pas chez un prestataire.
+Chaque compte est protégé par un mot de passe et, si tu l'actives, par une double authentification.
+
+Deux fonctions facultatives envoient du texte à un service extérieur, uniquement quand tu les utilises :
+le **correcteur** (LanguageTool) et la **traduction** du CV (DeepL, avec ta propre clé).
+
+Tu peux télécharger une sauvegarde complète de ton compte à tout moment, dans « Mon compte ».
+
+## Installer et aller plus loin
+
+| Document | Contenu |
+|---|---|
+| [Déploiement](docs/deploiement.md) | installer l'application et la rendre accessible depuis Internet |
+| [Développement](docs/developpement.md) | lancer l'application sur son poste pour la modifier |
+| [Détails techniques](docs/technique.md) | technologies, architecture, sécurité |
+| [Base de données](docs/base-de-donnees.md) | carte des tables |
+
+## Licence
+
+Slimy Career est publié sous licence [PolyForm Noncommercial 1.0.0](LICENSE.md) : chacun peut le lire, l'utiliser,
+le modifier et le partager **à des fins non commerciales**, en conservant la licence et la mention de l'auteur.
+Tout usage commercial (vente du logiciel, d'un dérivé ou d'un service payant bâti dessus) est interdit sans
+l'accord écrit de l'auteur.
