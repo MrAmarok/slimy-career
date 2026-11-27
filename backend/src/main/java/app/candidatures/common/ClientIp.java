@@ -6,8 +6,8 @@ import org.springframework.stereotype.Component;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * Adresse du visiteur. Derrière le tunnel Cloudflare, elle est lue dans l'en-tête que Cloudflare écrit lui-même
- * (APP_CLIENT_IP_HEADER = CF-Connecting-IP) : contrairement à X-Forwarded-For, le visiteur ne peut pas le choisir.
+ * Adresse du visiteur. Derrière le reverse proxy (Caddy), elle est lue dans l'en-tête que le proxy écrit lui-même
+ * (APP_CLIENT_IP_HEADER = X-Real-IP) : contrairement à X-Forwarded-For, le visiteur ne peut pas le choisir.
  */
 @Component
 public class ClientIp {

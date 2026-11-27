@@ -1,13 +1,16 @@
-# Déploiement : base PostgreSQL + application + service de recherche d'offres + tunnel Cloudflare.
+# Déploiement : base PostgreSQL + application + service de recherche d'offres + entrée HTTPS (Caddy).
 #
 #   cp .env.example .env    puis remplir les mots de passe
 #   docker compose up -d --build                       # application sur http://localhost:8080 (cette machine seulement)
-#   docker compose --profile tunnel up -d --build      # + accès depuis Internet par le tunnel Cloudflare (HTTPS)
+#   docker compose --profile https up -d --build       # + accès depuis Internet en HTTPS sur ton domaine (APP_DOMAIN)
+#
+# Derrière un tunnel ou un reverse proxy déjà en place (tunnel Cloudflare, Pangolin, Traefik…) : pas de profil,
+# le tunnel vise http://localhost:8080 et APP_CLIENT_IP_HEADER prend l'en-tête écrit par ce proxy.
 #
 # Cloisonnement des réseaux :
 #   base      db <-> app                 réseau interne, sans accès à Internet ; la base n'est joignable que par l'application
-#   recherche app <-> scraper            le service de recherche ne voit ni la base ni le tunnel
-#   entree    app <-> cloudflared
+#   recherche app <-> scraper            le service de recherche ne voit ni la base ni l'entrée HTTPS
+#   entree    app <-> caddy
 
 services:
   db:
@@ -40,14 +43,15 @@ services:
       APP_ADMIN_USERNAME: ${APP_ADMIN_USERNAME}
       APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD}
       APP_SECRET_KEY: ${APP_SECRET_KEY}
-      # adresse du visiteur : en-tête écrit par Cloudflare (le visiteur ne peut pas le falsifier)
-      APP_CLIENT_IP_HEADER: ${APP_CLIENT_IP_HEADER:-CF-Connecting-IP}
+      # adresse du visiteur : en-tête écrit par le proxy placé devant (le visiteur ne peut pas le falsifier).
+      # Caddy : X-Real-IP ; tunnel Cloudflare : CF-Connecting-IP
+      APP_CLIENT_IP_HEADER: ${APP_CLIENT_IP_HEADER:-X-Real-IP}
       SCRAPER_URL: http://scraper:8000
       SERPAPI_KEY: ${SERPAPI_KEY:-}
       TZ: ${TZ:-Europe/Paris}
     networks: [base, recherche, entree]
     ports:
-      # accessible seulement depuis cette machine ; l'accès extérieur passe par le tunnel
+      # accessible seulement depuis cette machine ; l'accès extérieur passe par Caddy ou par ton tunnel
       - "127.0.0.1:${APP_PORT:-8080}:8080"
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]
@@ -65,18 +69,30 @@ services:
     mem_limit: 1g
     pids_limit: 256
 
-  # Tunnel Cloudflare : connexion sortante vers Cloudflare, qui sert l'application en HTTPS sur ton domaine.
-  # Dans Zero Trust > Networks > Tunnels, le « public hostname » doit pointer vers le service  http://app:8080
-  cloudflared:
-    image: cloudflare/cloudflared:2026.11.2
-    profiles: ["tunnel"]
+  # Entrée HTTPS directe, facultative : seul service ouvert sur Internet. Caddy obtient et renouvelle le certificat
+  # Let's Encrypt du domaine APP_DOMAIN (voir Caddyfile). Il faut que le domaine pointe vers cette machine et que
+  # ses ports publics 80 et 443 arrivent sur HTTP_PORT et HTTPS_PORT. Inutile derrière un tunnel.
+  caddy:
+    image: caddy:2.11.9-alpine
+    profiles: ["https"]
     restart: unless-stopped
-    command: tunnel --no-autoupdate run
     environment:
-      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # certificats et clés : à conserver, sinon un nouveau certificat est demandé à chaque recréation
+      - caddy-data:/data
+      - caddy-config:/config
     networks: [entree]
     depends_on:
       - app
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
 
 networks:
   base:
@@ -86,3 +102,5 @@ networks:
 
 volumes:
   db-data:
+  caddy-data:
+  caddy-config:

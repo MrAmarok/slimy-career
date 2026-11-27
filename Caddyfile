@@ -1,0 +1,8 @@
+# Entrée HTTPS : Caddy obtient et renouvelle seul le certificat Let's Encrypt du domaine APP_DOMAIN,
+# redirige HTTP vers HTTPS et transmet les requêtes à l'application.
+{$APP_DOMAIN} {
+	reverse_proxy app:8080 {
+		# adresse du visiteur, écrite par Caddy : une valeur envoyée par le visiteur est écrasée
+		header_up X-Real-IP {remote_host}
+	}
+}

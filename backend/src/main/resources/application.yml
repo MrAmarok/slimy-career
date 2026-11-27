@@ -12,7 +12,7 @@ spring:
 
 server:
   port: ${PORT:8080}
-  # derrière Cloudflare Tunnel : fait confiance aux en-têtes X-Forwarded-* (HTTPS, adresse du client)
+  # derrière le reverse proxy (Caddy) : fait confiance aux en-têtes X-Forwarded-* (HTTPS, adresse du client)
   forward-headers-strategy: framework
   tomcat:
     max-http-form-post-size: 25MB
@@ -34,7 +34,7 @@ app:
     password: ${APP_ADMIN_PASSWORD:}
   # clé de chiffrement des secrets rangés en base (double authentification, clés d'API) : longue chaîne aléatoire, à ne jamais changer
   secret-key: ${APP_SECRET_KEY:}
-  # en-tête qui porte l'adresse du visiteur ; derrière le tunnel Cloudflare : CF-Connecting-IP
+  # en-tête qui porte l'adresse du visiteur ; derrière Caddy : X-Real-IP
   client-ip-header: ${APP_CLIENT_IP_HEADER:}
   # service de recherche d'offres (scraper/server.py), isolé du serveur : il ne reçoit aucun secret
   scraper:
